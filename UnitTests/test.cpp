@@ -1,6 +1,12 @@
 #include "pch.h"
+#include "JsonReflect.hpp"
 
-TEST(TestCaseName, TestName) {
-  EXPECT_EQ(1, 1);
-  EXPECT_TRUE(true);
+TEST(JsonReflect, integer) {
+	int input = 42;
+	auto j = JsonReflect::to_json(input);
+
+	int output = 0;
+	JsonReflect::from_json(j, output);
+
+	EXPECT_EQ(input, output);
 }
