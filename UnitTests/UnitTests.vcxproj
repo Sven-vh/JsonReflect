@@ -66,6 +66,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\JsonReflect.hpp" />
+    <ClInclude Include="..\JsonReflect_entry.hpp" />
+    <ClInclude Include="..\JsonReflect_primitives.hpp" />
+    <ClInclude Include="..\JsonReflect_helpers.hpp" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>

@@ -17,5 +17,8 @@
     <ClInclude Include="pch.h">
       <Filter>Tests</Filter>
     </ClInclude>
+    <ClInclude Include="..\JsonReflect_primitives.hpp" />
+    <ClInclude Include="..\JsonReflect.hpp" />
+    <ClInclude Include="..\JsonReflect_helpers.hpp" />
   </ItemGroup>
 </Project>
