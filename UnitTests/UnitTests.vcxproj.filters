@@ -20,5 +20,9 @@
     <ClInclude Include="..\JsonReflect_primitives.hpp" />
     <ClInclude Include="..\JsonReflect.hpp" />
     <ClInclude Include="..\JsonReflect_helpers.hpp" />
+    <ClInclude Include="..\JsonReflect_entry.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>
