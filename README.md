@@ -1,3 +1,6 @@
+<img width="1251" height="526" alt="JsonReflect" src="https://github.com/user-attachments/assets/7aedcfa8-2016-4538-93f4-bb896fcef895" />
+
+---
 
 # JsonReflect
 
@@ -21,6 +24,8 @@ json j = JsonReflect::to_json(input);
 GameSettings output{};
 JsonReflect::from_json(j, output);
 ```
+
+Output:
 
 ```json
 {
