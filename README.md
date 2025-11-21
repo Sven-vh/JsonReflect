@@ -34,3 +34,7 @@ Output:
     "fullscreen": false
 }
 ```
+
+> [!WARNING]
+>
+> **(WIP)** This library is part of my self-study project for university and is still a work in progress.

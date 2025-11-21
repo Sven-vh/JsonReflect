@@ -13,18 +13,22 @@ VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::serialize_lib_t, T, __VA_ARGS__);\
 VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::deserialize_lib_t, T, __VA_ARGS__)
 
 namespace JsonReflect {
-	using json = nlohmann::json;
+	using json = nlohmann::ordered_json;
 
 	/* Tags */
 	struct serialize_t { /* Public Tag */ };
 	inline constexpr serialize_t serialize{};
 	struct serialize_lib_t { /* Library only */ };
 	inline constexpr serialize_lib_t serialize_lib{};
+	struct serialize_default_t { /* Library only - nlohmann Default Implementation */ };
+	inline constexpr serialize_default_t serialize_default{};
 
 	struct deserialize_t { /* Public Tag */ };
 	inline constexpr deserialize_t deserialize{};
 	struct deserialize_lib_t { /* Library only */ };
 	inline constexpr deserialize_lib_t deserialize_lib{};
+	struct deserialize_default_t { /* Library only - nlohmann Default Implementation */ };
+	inline constexpr deserialize_default_t deserialize_default{};
 
 	struct compare_t { /* Public Tag */ };
 	inline constexpr compare_t compare{};
@@ -46,7 +50,11 @@ namespace JsonReflect {
 		else if constexpr (svh::is_tag_invocable_v<serialize_lib_t, const T&, Args...>) {
 			return tag_invoke(serialize_lib, value, std::forward<Args>(args)...);
 		}
-		/* 3) Check if type is reflected */
+		/* 3) Check for nlohmann default serialize function */
+		else if constexpr (svh::is_tag_invocable_v<serialize_default_t, const T&, Args...>) {
+			return tag_invoke(serialize_default, value, std::forward<Args>(args)...);
+		}
+		/* 4) Check if type is reflected */
 		else if constexpr (Detail::is_visitable_v<T, serialize_lib_t>) {
 			json j;
 			visit_struct::context<serialize_lib_t>::for_each(value, [&](const char* name, const auto& field) {
@@ -54,7 +62,7 @@ namespace JsonReflect {
 				});
 			return j;
 		} 
-		/* 4) No suitable serialize implementation found, compile assert */
+		/* 5) No suitable serialize implementation found, compile assert */
 		else {
 			static_assert(svh::always_false<T>::value, "JsonSerializer Error: No suitable serialize implementation found for type T");
 			return {};
@@ -71,7 +79,11 @@ namespace JsonReflect {
 		else if constexpr (svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&, Args...>) {
 			return tag_invoke(deserialize_lib, j, value, std::forward<Args>(args)...);
 		}
-		/* 3) Check if type is reflected */
+		/* 3) Check for nlohmann default deserialize function */
+		else if constexpr (svh::is_tag_invocable_v<deserialize_default_t, const json&, T&, Args...>) {
+			return tag_invoke(deserialize_default, j, value, std::forward<Args>(args)...);
+		}
+		/* 4) Check if type is reflected */
 		else if constexpr (Detail::is_visitable_v<T, deserialize_lib_t>) {
 			visit_struct::context<deserialize_lib_t>::for_each(value, [&](const char* name, auto& field) {
 				auto it = j.find(name);
@@ -80,7 +92,7 @@ namespace JsonReflect {
 				}
 				});
 		}
-		/* 4) No suitable deserialize implementation found, compile assert */
+		/* 5) No suitable deserialize implementation found, compile assert */
 		else {
 			static_assert(svh::always_false<T>::value, "JsonSerializer Error: No suitable deserialize implementation found for type T");
 			return;
