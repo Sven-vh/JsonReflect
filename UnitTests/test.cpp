@@ -2,7 +2,7 @@
 #include <nlohmann/json.hpp>
 
 template<typename T>
-static void serialize_test(const T input = {}) {
+static void serialize_test(const T input) {
 	auto result = JsonReflect::to_json(input);
 
 	const std::string json_str = result.dump(2);
@@ -14,21 +14,21 @@ static void serialize_test(const T input = {}) {
 }
 
 TEST(JsonReflect, numerics) {
-	serialize_test<bool>();
-	serialize_test<char>();
-	serialize_test<signed char>();
-	serialize_test<unsigned char>();
-	serialize_test<short>();
-	serialize_test<unsigned short>();
-	serialize_test<int>();
-	serialize_test<unsigned int>();
-	serialize_test<long>();
-	serialize_test<unsigned long>();
-	serialize_test<long long>();
-	serialize_test<unsigned long long>();
-	serialize_test<float>();
-	serialize_test<double>();
-	serialize_test<long double>();
+	serialize_test<bool>(true);
+	serialize_test<char>('a');
+	serialize_test<signed char>(-1);
+	serialize_test<unsigned char>(255);
+	serialize_test<short>(-1);
+	serialize_test<unsigned short>(65535);
+	serialize_test<int>(-1);
+	serialize_test<unsigned int>(4294967295);
+	serialize_test<long>(-1);
+	serialize_test<unsigned long>(4294967295);
+	serialize_test<long long>(-1);
+	serialize_test<unsigned long long>(4294967295);
+	serialize_test<float>(-1.0f);
+	serialize_test<double>(-1.0);
+	serialize_test<long double>(-1.0);
 }
 
 TEST(JsonReflect, string) {
