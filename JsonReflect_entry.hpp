@@ -12,27 +12,29 @@
 VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::serialize_lib_t, T, __VA_ARGS__);\
 VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::deserialize_lib_t, T, __VA_ARGS__)
 
+struct global_tag {};
+
 namespace JsonReflect {
 	using json = nlohmann::ordered_json;
 
 	/* Tags */
-	struct serialize_t { /* Public Tag */ };
+	struct serialize_t : global_tag { /* Public Tag */ };
 	inline constexpr serialize_t serialize{};
-	struct serialize_lib_t { /* Library only */ };
+	struct serialize_lib_t : global_tag { /* Library only */ };
 	inline constexpr serialize_lib_t serialize_lib{};
-	struct serialize_default_t { /* Library only - nlohmann Default Implementation */ };
+	struct serialize_default_t : global_tag { /* Library only - nlohmann Default Implementation */ };
 	inline constexpr serialize_default_t serialize_default{};
 
-	struct deserialize_t { /* Public Tag */ };
+	struct deserialize_t : global_tag { /* Public Tag */ };
 	inline constexpr deserialize_t deserialize{};
-	struct deserialize_lib_t { /* Library only */ };
+	struct deserialize_lib_t : global_tag { /* Library only */ };
 	inline constexpr deserialize_lib_t deserialize_lib{};
-	struct deserialize_default_t { /* Library only - nlohmann Default Implementation */ };
+	struct deserialize_default_t : global_tag { /* Library only - nlohmann Default Implementation */ };
 	inline constexpr deserialize_default_t deserialize_default{};
 
-	struct compare_t { /* Public Tag */ };
+	struct compare_t : global_tag { /* Public Tag */ };
 	inline constexpr compare_t compare{};
-	struct compare_lib_t { /* Library only */ };
+	struct compare_lib_t : global_tag { /* Library only */ };
 	inline constexpr compare_lib_t compare_lib{};
 
 	namespace Detail {
@@ -61,7 +63,7 @@ namespace JsonReflect {
 				j[name] = to_json(field, std::forward<Args>(args)...);
 				});
 			return j;
-		} 
+		}
 		/* 5) No suitable serialize implementation found, compile assert */
 		else {
 			static_assert(svh::always_false<T>::value, "JsonSerializer Error: No suitable serialize implementation found for type T");
