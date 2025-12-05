@@ -10,7 +10,12 @@ static void serialize_test(const T input) {
 	T output{};
 	JsonReflect::from_json(result, output);
 
-	EXPECT_EQ(input, output);
+	if constexpr (JsonReflect::Detail::has_equality_operator_v<T>) {
+		EXPECT_EQ(input, output);
+	} else {
+		auto ohmannn_diff = nlohmann::json::diff(result, JsonReflect::to_json(output));
+		EXPECT_TRUE(ohmannn_diff.empty());
+	}
 }
 
 TEST(JsonReflect, numerics) {
@@ -35,15 +40,6 @@ TEST(JsonReflect, string) {
 	serialize_test<std::string>("Hello, World!");
 }
 
-TEST(JsonReflect, vector) {
-	serialize_test<std::vector<int>>({ 1, 2, 3, 4, 5 });
-	serialize_test<std::vector<std::string>>({ "one", "two", "three" });
-}
-
-TEST(JsonReflect, map) {
-	serialize_test<std::map<std::string, int>>({ {"one", 1}, {"two", 2}, {"three", 3} });
-}
-
 enum class Difficulty {
 	Easy,
 	Medium,
@@ -61,19 +57,130 @@ struct GameSettings {
 	float		sensitivity = 1.0f;
 	bool		fullscreen = true;
 	Difficulty	difficulty = Difficulty::Medium;
-
-	/* Required for unit test compare */
-	bool operator==(const GameSettings& other) const {
-		return volume == other.volume &&
-			sensitivity == other.sensitivity &&
-			fullscreen == other.fullscreen &&
-			difficulty == other.difficulty;
-	}
 };
 JSON_REFLECT(GameSettings, volume, sensitivity, fullscreen, difficulty);
 
-using json = nlohmann::ordered_json;
 TEST(JsonReflect, custom_struct) {
 	GameSettings settings;
 	serialize_test(settings);
+}
+
+struct NestedSettings {
+	GameSettings	game_settings;
+	std::string		player_name = "Player1";
+};
+JSON_REFLECT(NestedSettings, game_settings, player_name);
+
+TEST(JsonReflect, nested_struct) {
+	NestedSettings settings;
+	serialize_test(settings);
+}
+
+/* STL Containers */
+TEST(JsonReflect, vector) {
+	serialize_test<std::vector<int>>({ 1, 2, 3, 4, 5 });
+	serialize_test<std::vector<std::string>>({ "one", "two", "three" });
+	serialize_test<std::vector<bool>>({ true, false, true });
+}
+
+TEST(JsonReflect, array) {
+	serialize_test<std::array<int, 5>>({ 1, 2, 3, 4, 5 });
+	serialize_test<std::array<std::string, 3>>({ "one", "two", "three" });
+	serialize_test<std::array<bool, 3>>({ true, false, true });
+}
+
+TEST(JsonReflect, list) {
+	serialize_test<std::list<int>>({ 1, 2, 3, 4, 5 });
+	serialize_test<std::list<std::string>>({ "one", "two", "three" });
+	serialize_test<std::list<bool>>({ true, false, true });
+}
+
+TEST(JsonReflect, forward_list) {
+	serialize_test<std::forward_list<int>>({ 1, 2, 3, 4, 5 });
+	serialize_test<std::forward_list<std::string>>({ "one", "two", "three" });
+	serialize_test<std::forward_list<bool>>({ true, false, true });
+}
+
+#include <deque>
+
+TEST(JsonReflect, deque) {
+	serialize_test<std::deque<int>>({ 1, 2, 3, 4, 5 });
+	serialize_test<std::deque<std::string>>({ "one", "two", "three" });
+	serialize_test<std::deque<bool>>({ true, false, true });
+}
+
+#include <set>
+
+TEST(JsonReflect, set) {
+	serialize_test<std::set<int>>({ 1, 2, 3, 4, 5 });
+	serialize_test<std::set<std::string>>({ "one", "two", "three" });
+	serialize_test<std::set<bool>>({ true, false, true });
+}
+
+#include <unordered_set>
+
+TEST(JsonReflect, unordered_set) {
+	serialize_test<std::unordered_set<int>>({ 1, 2, 3, 4, 5 });
+	serialize_test<std::unordered_set<std::string>>({ "one", "two", "three" });
+	serialize_test<std::unordered_set<bool>>({ true, false, true });
+}
+
+TEST(JsonReflect, multi_set) {
+	serialize_test<std::multiset<int>>({ 1, 2, 2, 3, 4, 5 });
+	serialize_test<std::multiset<std::string>>({ "one", "two", "two", "three" });
+	serialize_test<std::multiset<bool>>({ true, false, true, true });
+}
+
+TEST(JsonReflect, unordered_multiset) {
+	serialize_test<std::unordered_multiset<int>>({ 1, 2, 2, 3, 4, 5 });
+	serialize_test<std::unordered_multiset<std::string>>({ "one", "two", "two", "three" });
+	serialize_test<std::unordered_multiset<bool>>({ true, false, true, true });
+}
+
+/* Maps */
+TEST(JsonReflect, map) {
+	serialize_test<std::map<std::string, int>>({ {"one", 1}, {"two", 2}, {"three", 3} });
+}
+
+TEST(JsonReflect, unordered_map) {
+	serialize_test<std::unordered_map<std::string, int>>({ {"one", 1}, {"two", 2}, {"three", 3} });
+}
+
+TEST(JsonReflect, multi_map) {
+	serialize_test<std::multimap<std::string, int>>({ {"one", 1}, {"two", 2}, {"two", 22}, {"three", 3} });
+}
+
+TEST(JsonReflect, unordered_multi_map) {
+	serialize_test<std::unordered_multimap<std::string, int>>({ {"one", 1}, {"two", 2}, {"two", 22}, {"three", 3} });
+}
+
+/* Other STL Types */
+TEST(JsonReflect, pair) {
+	serialize_test<std::pair<int, std::string>>({ 1, "one" });
+}
+
+TEST(JsonReflect, tuple) {
+	serialize_test<std::tuple<int, std::string, bool>>({ 1, "one", true });
+}
+
+TEST(JsonReflect, optional) {
+	serialize_test<std::optional<int>>(42);
+	serialize_test<std::optional<int>>(std::nullopt);
+}
+
+/* smart pointers */
+TEST(JsonReflect, unique_ptr) {
+	serialize_test<std::unique_ptr<int>>(std::make_unique<int>(42));
+}
+
+TEST(JsonReflect, shared_ptr) {
+	serialize_test<std::shared_ptr<int>>(std::make_shared<int>(42));
+}
+
+TEST(JsonReflect, weak_ptr) {
+	{
+		auto sp = std::make_shared<int>(42);
+		std::weak_ptr<int> wp = sp;
+		serialize_test<std::weak_ptr<int>>(wp);
+	}
 }

@@ -11,3 +11,4 @@
 #include "JsonReflect_helpers.hpp"
 #include "JsonReflect_entry.hpp"
 #include "JsonReflect_primitives.hpp"
+#include "JsonReflect_stl.hpp"

@@ -7,12 +7,14 @@
 namespace JsonReflect {
 
 	/* [ Serialize ] nlohmann defaults */
+	/* Includes most of std types and primitives */
 	template<typename T>
 	std::enable_if_t<Detail::is_json_compatible_v<T>, json> tag_invoke(serialize_default_t, const T& value) {
 		return json(value);
 	}
 
 	/* [ Deserialize ] nlohmann defaults */
+	/* Includes most of std types and primitives */
 	template<typename T>
 	std::enable_if_t<Detail::is_json_compatible_v<T>, void> tag_invoke(deserialize_default_t, const json& j, T& value) {
 		value = j.get<T>();

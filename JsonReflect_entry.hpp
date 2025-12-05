@@ -10,7 +10,8 @@
 
 #define JSON_REFLECT(T, ...) \
 VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::serialize_lib_t, T, __VA_ARGS__);\
-VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::deserialize_lib_t, T, __VA_ARGS__)
+VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::deserialize_lib_t, T, __VA_ARGS__);\
+VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::compare_lib_t, T, __VA_ARGS__)
 
 struct global_tag {};
 
@@ -101,6 +102,8 @@ namespace JsonReflect {
 		}
 	}
 
+	/* (ORDER MATTERS) Get changes between two objects as a json diff */
+	/* If right object has different values than left, those values are stored in the resulting json */
 	template<typename T, typename... Args>
 	static json get_changes(const T& lhs, const T& rhs, Args&&... args) {
 		/* 1) Check for user defined compare funciton */
@@ -122,7 +125,15 @@ namespace JsonReflect {
 				});
 			return j;
 		}
-		/* 4) No suitable comapre implementation found, compile assert */
+		/* 4) Fallback to equality operator if available */
+		else if constexpr (Detail::has_equality_operator_v<T>) {
+			if (lhs == rhs) {
+				return {};
+			} else {
+				return to_json(rhs, std::forward<Args>(args)...);
+			}
+		}
+		/* 6) No suitable compare implementation found, compile assert */
 		else {
 			static_assert(svh::always_false<T>::value, "JsonSerializer Error: No suitable serialize implementation found for type T");
 			return {};

@@ -4,13 +4,24 @@
 
 /* Helpers */
 namespace JsonReflect::Detail {
-	
+
+	// Remove const/volatile and reference from type
 	template<typename T>
 	using uncvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 
 	// Check if type is json-compatible (using internal trait)
+	//!nlohmann::detail::is_basic_json<uncvref_t<T>>::value&&
 	template<typename T>
 	inline constexpr bool is_json_compatible_v =
-		!nlohmann::detail::is_basic_json<uncvref_t<T>>::value &&
 		nlohmann::detail::is_compatible_type<nlohmann::json, uncvref_t<T>>::value;
+
+	// Check if type T has equality operator defined
+	template<typename T, typename = void>
+	struct has_equality_operator : std::false_type {};
+
+	template<typename T>
+	struct has_equality_operator<T, std::void_t<decltype(std::declval<T>() == std::declval<T>())>> : std::true_type {};
+
+	template<typename T>
+	inline constexpr bool has_equality_operator_v = has_equality_operator<T>::value;
 }
