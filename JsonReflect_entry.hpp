@@ -75,6 +75,7 @@ namespace JsonReflect {
 
 	template<typename T, typename... Args>
 	static void from_json(const json& j, T& value, Args&&... args) {
+        static_assert(std::is_const_v<T> == false, "JsonSerializer Error: Cannot deserialize a const object of type T");
 		/* 1) Check for user defined deserialize funciton */
 		if constexpr (svh::is_tag_invocable_v<deserialize_t, const json&, T&, Args...>) {
 			return tag_invoke(deserialize, j, value, std::forward<Args>(args)...);
