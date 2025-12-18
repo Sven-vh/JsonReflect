@@ -42,6 +42,22 @@ namespace JsonReflect {
 	namespace Detail {
 		template<typename T, typename CONTEXT> /* Has a visitable struct implementation */
 		constexpr bool is_visitable_v = visit_struct::traits::is_visitable<T, CONTEXT>::value;
+
+		/* Check if type can be serialized */
+        template <typename T, typename... Args>
+        inline constexpr bool has_to_json_v = 
+			svh::is_tag_invocable_v<serialize_t, const T&, Args...> || 
+			svh::is_tag_invocable_v<serialize_lib_t, const T&, Args...> ||
+			svh::is_tag_invocable_v<serialize_default_t, const T&, Args...> || 
+			is_visitable_v<T, serialize_lib_t>;
+
+        /* Check if type can be deserialized */
+        template <typename T, typename... Args>
+        inline constexpr bool has_from_json_v = 
+			svh::is_tag_invocable_v<deserialize_t, const json&, T&, Args...> || 
+			svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&, Args...> ||
+			svh::is_tag_invocable_v<deserialize_default_t, const json&, T&, Args...> || 
+			is_visitable_v<T, deserialize_lib_t>;
 	}
 
 	template<typename T, typename... Args>
