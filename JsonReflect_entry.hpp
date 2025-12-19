@@ -44,20 +44,38 @@ namespace JsonReflect {
 		constexpr bool is_visitable_v = visit_struct::traits::is_visitable<T, CONTEXT>::value;
 
 		/* Check if type can be serialized */
-        template <typename T, typename... Args>
-        inline constexpr bool has_to_json_v = 
-			svh::is_tag_invocable_v<serialize_t, const T&, Args...> || 
+		template <typename T, typename... Args>
+		inline constexpr bool has_to_json_v =
+			svh::is_tag_invocable_v<serialize_t, const T&, Args...> ||
 			svh::is_tag_invocable_v<serialize_lib_t, const T&, Args...> ||
-			svh::is_tag_invocable_v<serialize_default_t, const T&, Args...> || 
+			svh::is_tag_invocable_v<serialize_default_t, const T&, Args...> ||
 			is_visitable_v<T, serialize_lib_t>;
 
-        /* Check if type can be deserialized */
-        template <typename T, typename... Args>
-        inline constexpr bool has_from_json_v = 
-			svh::is_tag_invocable_v<deserialize_t, const json&, T&, Args...> || 
+		template <typename T, typename... Args>
+		inline constexpr bool has_custom_to_json_v =
+			svh::is_tag_invocable_v<serialize_t, const T&, Args...> ||
+			svh::is_tag_invocable_v<serialize_lib_t, const T&, Args...> ||
+			is_visitable_v<T, serialize_lib_t>;
+
+		/* Check if type can be deserialized */
+		template <typename T, typename... Args>
+		inline constexpr bool has_from_json_v =
+			svh::is_tag_invocable_v<deserialize_t, const json&, T&, Args...> ||
 			svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&, Args...> ||
-			svh::is_tag_invocable_v<deserialize_default_t, const json&, T&, Args...> || 
+			svh::is_tag_invocable_v<deserialize_default_t, const json&, T&, Args...> ||
 			is_visitable_v<T, deserialize_lib_t>;
+
+		template <typename T, typename... Args>
+		inline constexpr bool has_custom_from_json_v =
+			svh::is_tag_invocable_v<deserialize_t, const json&, T&, Args...> ||
+			svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&, Args...> ||
+			is_visitable_v<T, deserialize_lib_t>;
+
+		template<typename T>
+		inline constexpr bool is_json_compatible_v =
+			nlohmann::detail::is_compatible_type<nlohmann::json, uncvref_t<T>>::value &&
+			!has_custom_to_json_v<uncvref_t<T>> &&
+			!has_custom_from_json_v<uncvref_t<T>>;
 	}
 
 	template<typename T, typename... Args>
@@ -91,7 +109,7 @@ namespace JsonReflect {
 
 	template<typename T, typename... Args>
 	static void from_json(const json& j, T& value, Args&&... args) {
-        static_assert(std::is_const_v<T> == false, "JsonSerializer Error: Cannot deserialize a const object of type T");
+		static_assert(std::is_const_v<T> == false, "JsonSerializer Error: Cannot deserialize a const object of type T");
 		/* 1) Check for user defined deserialize funciton */
 		if constexpr (svh::is_tag_invocable_v<deserialize_t, const json&, T&, Args...>) {
 			return tag_invoke(deserialize, j, value, std::forward<Args>(args)...);

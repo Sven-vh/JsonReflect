@@ -39,6 +39,64 @@ namespace JsonReflect {
 	}
 }
 
+template<typename T>
+static std::enable_if_t<JsonReflect::Detail::has_custom_to_json_v<T>, void> to_json(nlohmann::json& j, const T& value) {
+	j = JsonReflect::to_json(value);
+}
+template<typename T>
+static std::enable_if_t<JsonReflect::Detail::has_custom_to_json_v<T>, void> to_json(nlohmann::ordered_json& j, const T& value) {
+	j = JsonReflect::to_json(value);
+}
+
+template<typename T>
+static std::enable_if_t<JsonReflect::Detail::has_custom_from_json_v<T>, void> from_json(const nlohmann::json& j, T& value) {
+	JsonReflect::from_json(j, value);
+}
+template<typename T>
+static std::enable_if_t<JsonReflect::Detail::has_custom_from_json_v<T>, void> from_json(const nlohmann::ordered_json& j, T& value) {
+	JsonReflect::from_json(j, value);
+}
+
+//namespace nlohmann {
+//	template <typename T>
+//	struct adl_serializer<T, std::enable_if_t<JsonReflect::Detail::is_json_compatible_v<T>>> {
+//		static void to_json(json& j, const T& value) {
+//			j = JsonReflect::to_json(value);
+//		}
+//
+//		static void to_json(ordered_json& j, const T& value) {
+//			j = JsonReflect::to_json(value);
+//		}
+//
+//		static void from_json(const json& j, T& opt) {
+//			JsonReflect::from_json(j, opt);
+//		}
+//
+//		static void from_json(const ordered_json& j, T& opt) {
+//			JsonReflect::from_json(j, opt);
+//		}
+//	};
+//}
+
 static_assert(JsonReflect::Detail::is_json_compatible_v<int>, "Trait check failed");
+static_assert(JsonReflect::Detail::is_json_compatible_v<float>, "Trait check failed");
+static_assert(JsonReflect::Detail::is_json_compatible_v<double>, "Trait check failed");
+
+static_assert(JsonReflect::Detail::is_json_compatible_v<std::vector<int>>, "Trait check failed");
+static_assert(JsonReflect::Detail::is_json_compatible_v<std::vector<float>>, "Trait check failed");
+static_assert(JsonReflect::Detail::is_json_compatible_v<std::vector<double>>, "Trait check failed");
+
+
+//namespace JsonReflect::Detail::Tests {
+//	struct CustomType {
+//		int a;
+//		float b;
+//	};
+//}
+//JSON_REFLECT(JsonReflect::Detail::Tests::CustomType, a, b);
+//static_assert(nlohmann::detail::is_compatible_type<nlohmann::json, std::vector<JsonReflect::Detail::Tests::CustomType>>::value, "Trait check failed");
+//static_assert(nlohmann::detail::is_compatible_type<nlohmann::json, std::vector<GameSettings>>::value, "Trait check failed");
+//static_assert(nlohmann::detail::is_compatible_type<nlohmann::ordered_json, std::vector<GameSettings>>::value, "Trait check failed");
+
 static_assert(svh::is_tag_invocable_v<JsonReflect::serialize_default_t, const int&>, "Tag invocable check failed");
 static_assert(svh::is_tag_invocable_v<JsonReflect::deserialize_default_t, const JsonReflect::json&, int&>, "Tag invocable check failed");

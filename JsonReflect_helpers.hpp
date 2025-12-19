@@ -11,9 +11,7 @@ namespace JsonReflect::Detail {
 
 	// Check if type is json-compatible (using internal trait)
 	//!nlohmann::detail::is_basic_json<uncvref_t<T>>::value&&
-	template<typename T>
-	inline constexpr bool is_json_compatible_v =
-		nlohmann::detail::is_compatible_type<nlohmann::json, uncvref_t<T>>::value;
+
 
 	// Check if type T has equality operator defined
 	template<typename T, typename = void>

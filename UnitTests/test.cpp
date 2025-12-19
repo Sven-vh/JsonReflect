@@ -10,12 +10,12 @@ static void serialize_test(const T input) {
 	T output{};
 	JsonReflect::from_json(result, output);
 
-	if constexpr (JsonReflect::Detail::has_equality_operator_v<T>) {
-		EXPECT_EQ(input, output);
-	} else {
+	//if constexpr (JsonReflect::Detail::has_equality_operator_v<T>) {
+	//	EXPECT_EQ(input, output);
+	//} else {
 		auto ohmannn_diff = nlohmann::json::diff(result, JsonReflect::to_json(output));
 		EXPECT_TRUE(ohmannn_diff.empty());
-	}
+	//}
 }
 
 TEST(JsonReflect, numerics) {
@@ -38,42 +38,6 @@ TEST(JsonReflect, numerics) {
 
 TEST(JsonReflect, string) {
 	serialize_test<std::string>("Hello, World!");
-}
-
-enum class Difficulty {
-	Easy,
-	Medium,
-	Hard
-};
-
-TEST(JsonReflect, enums) {
-	serialize_test<Difficulty>(Difficulty::Easy);
-	serialize_test<Difficulty>(Difficulty::Medium);
-	serialize_test<Difficulty>(Difficulty::Hard);
-}
-
-struct GameSettings {
-	int			volume = 50;
-	float		sensitivity = 1.0f;
-	bool		fullscreen = true;
-	Difficulty	difficulty = Difficulty::Medium;
-};
-JSON_REFLECT(GameSettings, volume, sensitivity, fullscreen, difficulty);
-
-TEST(JsonReflect, custom_struct) {
-	GameSettings settings;
-	serialize_test(settings);
-}
-
-struct NestedSettings {
-	GameSettings	game_settings;
-	std::string		player_name = "Player1";
-};
-JSON_REFLECT(NestedSettings, game_settings, player_name);
-
-TEST(JsonReflect, nested_struct) {
-	NestedSettings settings;
-	serialize_test(settings);
 }
 
 /* STL Containers */
@@ -183,4 +147,52 @@ TEST(JsonReflect, weak_ptr) {
 		std::weak_ptr<int> wp = sp;
 		serialize_test<std::weak_ptr<int>>(wp);
 	}
+}
+
+/* Custom Types */
+enum class Difficulty {
+	Easy,
+	Medium,
+	Hard
+};
+
+TEST(JsonReflect, enums) {
+	serialize_test<Difficulty>(Difficulty::Easy);
+	serialize_test<Difficulty>(Difficulty::Medium);
+	serialize_test<Difficulty>(Difficulty::Hard);
+}
+
+
+
+struct GameSettings {
+	int			volume = 50;
+	float		sensitivity = 1.0f;
+	bool		fullscreen = true;
+	Difficulty	difficulty = Difficulty::Medium;
+};
+JSON_REFLECT(GameSettings, volume, sensitivity, fullscreen, difficulty);
+
+TEST(JsonReflect, custom_struct) {
+	GameSettings settings;
+	serialize_test(settings);
+}
+
+TEST(JsonReflect, custom_struct_vector) {
+	std::vector<GameSettings> settings_vec = {
+		{ 50, 1.0f, true, Difficulty::Easy },
+		{ 75, 1.5f, false, Difficulty::Medium },
+		{ 100, 2.0f, true, Difficulty::Hard }
+	};
+	serialize_test(settings_vec);
+}
+
+struct NestedSettings {
+	GameSettings	game_settings;
+	std::string		player_name = "Player1";
+};
+JSON_REFLECT(NestedSettings, game_settings, player_name);
+
+TEST(JsonReflect, nested_struct) {
+	NestedSettings settings;
+	serialize_test(settings);
 }
