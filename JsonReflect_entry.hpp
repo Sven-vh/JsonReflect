@@ -71,6 +71,7 @@ namespace JsonReflect {
 			svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&, Args...> ||
 			is_visitable_v<T, deserialize_lib_t>;
 
+		/* Check if type is nlohmann json compatible and has no custom (de)serialize implementation */
 		template<typename T>
 		inline constexpr bool is_json_compatible_v =
 			nlohmann::detail::is_compatible_type<nlohmann::json, uncvref_t<T>>::value &&
