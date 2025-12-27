@@ -46,29 +46,39 @@ namespace JsonReflect {
 		/* Check if type can be serialized */
 		template <typename T, typename... Args>
 		inline constexpr bool has_to_json_v =
-			svh::is_tag_invocable_v<serialize_t, const T&, Args...> ||
-			svh::is_tag_invocable_v<serialize_lib_t, const T&, Args...> ||
-			svh::is_tag_invocable_v<serialize_default_t, const T&, Args...> ||
+			svh::is_tag_invocable_v<serialize_t, const T&, Args...> ||			/* WITH arguments */
+            svh::is_tag_invocable_v<serialize_t, const T&> ||					/* WITHOUT arguments */
+			svh::is_tag_invocable_v<serialize_lib_t, const T&, Args...> ||		/* WITH arguments */
+            svh::is_tag_invocable_v<serialize_lib_t, const T&> ||				/* WITHOUT arguments */
+			svh::is_tag_invocable_v<serialize_default_t, const T&, Args...> ||	/* WITH arguments */
+			svh::is_tag_invocable_v<serialize_default_t, const T&> ||			/* WITHOUT arguments */
 			is_visitable_v<T, serialize_lib_t>;
 
 		template <typename T, typename... Args>
 		inline constexpr bool has_custom_to_json_v =
-			svh::is_tag_invocable_v<serialize_t, const T&, Args...> ||
-			svh::is_tag_invocable_v<serialize_lib_t, const T&, Args...> ||
+			svh::is_tag_invocable_v<serialize_t, const T&, Args...> ||			/* WITH arguments */
+			svh::is_tag_invocable_v<serialize_t, const T&> ||					/* WITHOUT arguments */
+			svh::is_tag_invocable_v<serialize_lib_t, const T&, Args...> || 		/* WITH arguments */
+			svh::is_tag_invocable_v<serialize_lib_t, const T&> ||				/* WITHOUT arguments */
 			is_visitable_v<T, serialize_lib_t>;
 
 		/* Check if type can be deserialized */
 		template <typename T, typename... Args>
 		inline constexpr bool has_from_json_v =
-			svh::is_tag_invocable_v<deserialize_t, const json&, T&, Args...> ||
-			svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&, Args...> ||
-			svh::is_tag_invocable_v<deserialize_default_t, const json&, T&, Args...> ||
+			svh::is_tag_invocable_v<deserialize_t, const json&, T&, Args...> ||			/* WITH arguments */
+			svh::is_tag_invocable_v<deserialize_t, const json&, T&> ||                  /* WITHOUT arguments */
+			svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&, Args...> ||		/* WITH arguments */
+			svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&> ||              /* WITHOUT arguments */
+			svh::is_tag_invocable_v<deserialize_default_t, const json&, T&, Args...> ||	/* WITH arguments */
+			svh::is_tag_invocable_v<deserialize_default_t, const json&, T&> ||          /* WITHOUT arguments */
 			is_visitable_v<T, deserialize_lib_t>;
 
 		template <typename T, typename... Args>
 		inline constexpr bool has_custom_from_json_v =
-			svh::is_tag_invocable_v<deserialize_t, const json&, T&, Args...> ||
-			svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&, Args...> ||
+			svh::is_tag_invocable_v<deserialize_t, const json&, T&, Args...> ||		/* WITH arguments */
+			svh::is_tag_invocable_v<deserialize_t, const json&, T&> ||				/* WITHOUT arguments */
+			svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&, Args...> || /* WITH arguments */
+			svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&> ||          /* WITHOUT arguments */
 			is_visitable_v<T, deserialize_lib_t>;
 
 		/* Check if type is nlohmann json compatible and has no custom (de)serialize implementation */
@@ -82,17 +92,25 @@ namespace JsonReflect {
 	template<typename T, typename... Args>
 	static json to_json(const T& value, Args&&... args) {
 		/* 1) Check for user defined serialize funciton */
-		if constexpr (svh::is_tag_invocable_v<serialize_t, const T&, Args...>) {
+        if constexpr (svh::is_tag_invocable_v<serialize_t, const T&, Args...>) { /* WITH arguments */
 			return tag_invoke(serialize, value, std::forward<Args>(args)...);
-		}
+        } else if constexpr (svh::is_tag_invocable_v<serialize_t, const T&>) { /* WITHOUT arguments */
+            return tag_invoke(serialize, value);
+        }
 		/* 2) Check for library defined serialize function */
-		else if constexpr (svh::is_tag_invocable_v<serialize_lib_t, const T&, Args...>) {
+        else if constexpr (svh::is_tag_invocable_v<serialize_lib_t, const T&, Args...>) { /* WITH arguments */
 			return tag_invoke(serialize_lib, value, std::forward<Args>(args)...);
 		}
+		else if constexpr (svh::is_tag_invocable_v<serialize_lib_t, const T&>) { /* WITHOUT arguments */
+			return tag_invoke(serialize_lib, value);
+        }
 		/* 3) Check for nlohmann default serialize function */
-		else if constexpr (svh::is_tag_invocable_v<serialize_default_t, const T&, Args...>) {
+        else if constexpr (svh::is_tag_invocable_v<serialize_default_t, const T&, Args...>) { /* WITH arguments */
 			return tag_invoke(serialize_default, value, std::forward<Args>(args)...);
 		}
+		else if constexpr (svh::is_tag_invocable_v<serialize_default_t, const T&>) { /* WITHOUT arguments */
+			return tag_invoke(serialize_default, value);
+        }
 		/* 4) Check if type is reflected */
 		else if constexpr (Detail::is_visitable_v<T, serialize_lib_t>) {
 			json j;
@@ -112,17 +130,23 @@ namespace JsonReflect {
 	static void from_json(const json& j, T& value, Args&&... args) {
 		static_assert(std::is_const_v<T> == false, "JsonSerializer Error: Cannot deserialize a const object of type T");
 		/* 1) Check for user defined deserialize funciton */
-		if constexpr (svh::is_tag_invocable_v<deserialize_t, const json&, T&, Args...>) {
+		if constexpr (svh::is_tag_invocable_v<deserialize_t, const json&, T&, Args...>) { /* WITH arguments */
 			return tag_invoke(deserialize, j, value, std::forward<Args>(args)...);
-		}
+		} else if constexpr (svh::is_tag_invocable_v<deserialize_t, const json&, T&>) { /* WITHOUT arguments */
+			return tag_invoke(deserialize, j, value);
+        }
 		/* 2) Check for library defined deserialize function */
-		else if constexpr (svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&, Args...>) {
+        else if constexpr (svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&, Args...>) { /* WITH arguments */
 			return tag_invoke(deserialize_lib, j, value, std::forward<Args>(args)...);
-		}
+        } else if constexpr (svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&>) { /* WITHOUT arguments */
+			return tag_invoke(deserialize_lib, j, value);
+        }
 		/* 3) Check for nlohmann default deserialize function */
-		else if constexpr (svh::is_tag_invocable_v<deserialize_default_t, const json&, T&, Args...>) {
+        else if constexpr (svh::is_tag_invocable_v<deserialize_default_t, const json&, T&, Args...>) { /* WITH arguments */
 			return tag_invoke(deserialize_default, j, value, std::forward<Args>(args)...);
-		}
+		} else if constexpr (svh::is_tag_invocable_v<deserialize_default_t, const json&, T&>) { /* WITHOUT arguments */
+			return tag_invoke(deserialize_default, j, value);
+        }
 		/* 4) Check if type is reflected */
 		else if constexpr (Detail::is_visitable_v<T, deserialize_lib_t>) {
 			visit_struct::context<deserialize_lib_t>::for_each(value, [&](const char* name, auto& field) {
