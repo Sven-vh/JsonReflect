@@ -39,6 +39,13 @@ namespace JsonReflect {
 	struct compare_lib_t : json_reflect_global_tag { /* Library only */ };
 	inline constexpr compare_lib_t compare_lib{};
 
+	/* Forward declare */
+	template <typename T, typename... Args>
+    static json to_json(const T& value, Args&&... args);
+
+	template <typename T, typename... Args>
+    static void from_json(const json& j, T& value, Args&&... args);
+
 	namespace Detail {
 		template<typename T, typename CONTEXT> /* Has a visitable struct implementation */
 		constexpr bool is_visitable_v = visit_struct::traits::is_visitable<T, CONTEXT>::value;
@@ -87,6 +94,25 @@ namespace JsonReflect {
 			nlohmann::detail::is_compatible_type<nlohmann::json, uncvref_t<T>>::value &&
 			!has_custom_to_json_v<uncvref_t<T>> &&
 			!has_custom_from_json_v<uncvref_t<T>>;
+
+		template <typename T, typename... Args>
+		static json to_json_visitable(const T& value, Args&&... args) {
+			json j;
+			visit_struct::context<serialize_lib_t>::for_each(value, [&](const char* name, const auto& field) {
+					j[name] = to_json(field, std::forward<Args>(args)...);
+				});
+			return j;
+        }
+
+		template <typename T, typename... Args>
+		static void from_json_visitable(const json& j, T& value, Args&&... args) {
+			visit_struct::context<deserialize_lib_t>::for_each(value, [&](const char* name, auto& field) {
+				auto it = j.find(name);
+				if (it != j.end()) {
+					from_json(it.value(), field, std::forward<Args>(args)...);
+				}
+			});
+        }
 	}
 
 	template<typename T, typename... Args>
@@ -113,11 +139,7 @@ namespace JsonReflect {
         }
 		/* 4) Check if type is reflected */
 		else if constexpr (Detail::is_visitable_v<T, serialize_lib_t>) {
-			json j;
-			visit_struct::context<serialize_lib_t>::for_each(value, [&](const char* name, const auto& field) {
-				j[name] = to_json(field, std::forward<Args>(args)...);
-				});
-			return j;
+            return Detail::to_json_visitable(value, std::forward<Args>(args)...);
 		}
 		/* 5) No suitable serialize implementation found, compile assert */
 		else {
@@ -149,12 +171,7 @@ namespace JsonReflect {
         }
 		/* 4) Check if type is reflected */
 		else if constexpr (Detail::is_visitable_v<T, deserialize_lib_t>) {
-			visit_struct::context<deserialize_lib_t>::for_each(value, [&](const char* name, auto& field) {
-				auto it = j.find(name);
-				if (it != j.end()) {
-					from_json(it.value(), field, std::forward<Args>(args)...);
-				}
-				});
+            return Detail::from_json_visitable(j, value, std::forward<Args>(args)...);
 		}
 		/* 5) No suitable deserialize implementation found, compile assert */
 		else {
