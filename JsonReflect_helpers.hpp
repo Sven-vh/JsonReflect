@@ -2,6 +2,10 @@
 #include <type_traits>
 #include <nlohmann/json.hpp>
 
+#define BEFRIEND_JSON_REFLECT()      \
+    template <typename, typename> \
+    friend struct ::visit_struct::traits::visitable;
+
 /* Helpers */
 namespace JsonReflect::Detail {
 
