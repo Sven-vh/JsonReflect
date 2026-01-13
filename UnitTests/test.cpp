@@ -1,5 +1,5 @@
 #include "pch.h"
-#include <nlohmann/json.hpp>
+//#include <nlohmann/json.hpp>
 
 template<typename T>
 static void serialize_test(const T input) {
@@ -206,4 +206,73 @@ TEST(JsonReflect, custom_struct_map) {
 		{"Player3", {25, 0.5f, true, Difficulty::Easy}}
 	};
 	serialize_test(settings_map);
+}
+
+/* private members */
+namespace ns {
+	struct PrivateSettings {
+	private:
+		int			volume = 50;
+		float		sensitivity = 1.0f;
+		bool		fullscreen = true;
+		Difficulty	difficulty = Difficulty::Medium;
+		BEFRIEND_JSON_REFLECT()
+	};
+}
+JSON_REFLECT(ns::PrivateSettings, volume, sensitivity, fullscreen, difficulty);
+
+TEST(JsonReflect, private_members) {
+	ns::PrivateSettings settings;
+	serialize_test(settings);
+}
+
+/* Tag invoke test */
+namespace ns {
+	struct CustomObject {
+		int id = 0;
+		std::string name;
+		float value = 0.0f;
+
+		void init() {};
+	};
+}
+JSON_REFLECT(ns::CustomObject, id, name, value);
+
+#if 0
+
+inline JsonReflect::json tag_invoke(JsonReflect::serialize_t, const ns::CustomObject& object) {
+	JsonReflect::json j;
+	j["id"] = JsonReflect::to_json(object.id);
+	j["name"] = JsonReflect::to_json(object.name);
+	j["value"] = JsonReflect::to_json(object.value);
+	return j;
+}
+
+inline void tag_invoke(JsonReflect::deserialize_t, const JsonReflect::json& j, ns::CustomObject& object) {
+	if (j.contains("id")) JsonReflect::from_json(j["id"], object.id);
+	if (j.contains("name")) JsonReflect::from_json(j["name"], object.name);
+	if (j.contains("value")) JsonReflect::from_json(j["value"], object.value);
+
+	// Call init after deserialization
+	object.init();
+}
+
+#else
+
+inline void tag_invoke(JsonReflect::deserialize_t, const JsonReflect::json& j, ns::CustomObject& object) {
+	// Use reflection deserialization
+	JsonReflect::Detail::from_json_visitable(j, object);
+
+	// Call init after deserialization
+	object.init();
+}
+
+#endif
+
+TEST(JsonReflect, tag_invoke_custom_object) {
+	ns::CustomObject obj;
+	obj.id = 1;
+	obj.name = "Test Object";
+	obj.value = 3.14f;
+	serialize_test(obj);
 }
