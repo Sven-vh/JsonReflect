@@ -5,7 +5,7 @@
 
 # JsonReflect
 
-**Reflection-based JSON serializer.**
+**Header-only reflection-based JSON serializer.**
 
 Automatically serializes and deserializes any C++ object to and from JSON.
 
@@ -38,7 +38,7 @@ Output:
 
 **1. Installation**
 
-Download the headers "JsonReflect" headers from the root of this repo.
+Download the "JsonReflect" headers + external headers from the root of this repo.
 ```cpp
 #include "JsonReflect.hpp"
 ```
