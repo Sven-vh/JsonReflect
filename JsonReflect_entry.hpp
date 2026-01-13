@@ -2,7 +2,9 @@
 
 /* Disable implicit nlohmann conversion */
 /* this is to avoid confusion with templates that are exidently converted to json objects */
+#ifndef JSON_USE_IMPLICIT_CONVERSIONS
 #define JSON_USE_IMPLICIT_CONVERSIONS 0
+#endif
 #include <nlohmann/json.hpp>
 
 #include <svh/tag_invoke.hpp>

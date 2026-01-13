@@ -3,6 +3,8 @@
 #include <type_traits>
 #include <utility>
 
+#ifndef SVH_TAG_INVOKE_HPP_INCLUDED
+
 namespace svh {
 
 	// ADL anchor: no definition on purpose.
@@ -28,3 +30,6 @@ namespace svh {
 	template<class T> struct always_false : std::false_type {};
 
 } // namespace svh
+
+#define SVH_TAG_INVOKE_HPP_INCLUDED
+#endif // SVH_TAG_INVOKE_HPP_INCLUDED
