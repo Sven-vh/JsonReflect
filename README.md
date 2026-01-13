@@ -38,7 +38,7 @@ Output:
 
 **1. Installation**
 
-Download the "JsonReflect" headers + external headers from the root of this repo.
+Download the "JsonReflect" headers + external headers from this repo.
 ```cpp
 #include "JsonReflect.hpp"
 ```
