@@ -153,7 +153,7 @@ When serializing a type, JsonReflect searches in this order at compile time:
 
 1. **User implementations** - Your tag_invoke functions
 2. **Reflection** - Types with ``JSON_REFLECT`` macro
-3, **Library implementations** - Built-in JsonReflect types
+3. **Library implementations** - Built-in JsonReflect types
 4. **[nlohmann::json](https://github.com/nlohmann/json)** - Types supported by nlohmann
 
 This means you can always override library and reflection behavior with your own ``tag_invoke`` implementations.
