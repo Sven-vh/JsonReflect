@@ -122,6 +122,6 @@ namespace JsonReflect {
 	template<typename T>
 	std::enable_if_t<Detail::is_weak_pointer_v<T>, void>
 		tag_invoke(deserialize_default_t, const json& j, T& value) {
-		static_assert(std::false_type::value, "JsonReflect Error: Deserialization of weak_ptr is not supported");
+		static_assert(std::false_type::value, "JsonReflect Error: Deserialization of weak_ptr is not supported.");
 	}
 }
