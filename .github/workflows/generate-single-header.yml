@@ -1,0 +1,53 @@
+name: Generate Single Header
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      # Only trigger when source code files change
+      - '*.hpp'
+      - 'extern/**/*.hpp'
+      - 'scripts/generate_single_header.py'
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  generate-single-header:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Generate single header
+        run: python scripts/generate_single_header.py
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet single_header/JsonReflect.hpp 2>/dev/null; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push if changed
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add single_header/JsonReflect.hpp
+          git commit -m "chore: regenerate single header file"
+          git push

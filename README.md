@@ -38,12 +38,23 @@ Output:
 
 **1. Installation**
 
-Download the "JsonReflect" headers + external headers from this repo.
+**Option A: Single Header (Recommended)**
+
+Download [`single_header/JsonReflect.hpp`](single_header/JsonReflect.hpp) - includes everything in one file.
+
 ```cpp
 #include "JsonReflect.hpp"
 ```
 
-2. Reflect Your Struct/Class
+**Option B: Separate Headers**
+
+Download all headers from the root directory + the `extern/` folder, then:
+
+```cpp
+#include "JsonReflect.hpp"
+```
+
+**2. Reflect Your Struct/Class**
 ```cpp
 struct GameSettings {
 	int			volume = 50;
@@ -54,7 +65,7 @@ struct GameSettings {
 JSON_REFLECT(GameSettings, volume, sensitivity, fullscreen, difficulty);
 ```
 
-3. Serialize
+**3. Serialize**
 ```cpp
 GameSettings input;
 input.volume = 75;
@@ -66,7 +77,7 @@ JsonReflect::json serialized = JsonReflect::to_json(input);
 std::ofstream("settings.json") << serialized.dump();
 ```
 
-4. Deserialize
+**4. Deserialize**
 ```cpp
 JsonReflect::json parsed_json = JsonReflect::json::parse(std::ifstream("settings.json"));
 
@@ -165,10 +176,12 @@ If no implementation is found:
 
 ## Dependencies
 
-- [nlohmann::json](https://github.com/nlohmann/json)
-- [visit_struct](https://github.com/cbeck88/visit_struct)
-- [magic_enum](https://github.com/Neargye/magic_enum)
-- C++ 17
+All dependencies are included in the single header file. If using separate headers (or check ``extern/`` folder):
+
+- [nlohmann::json](https://github.com/nlohmann/json) - JSON parsing and serialization
+- [visit_struct](https://github.com/cbeck88/visit_struct) - Compile-time struct reflection
+- [magic_enum](https://github.com/Neargye/magic_enum) - Enum reflection
+- C++17 or later
 
 ## Contributing
 
