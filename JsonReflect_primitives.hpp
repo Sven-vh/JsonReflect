@@ -1,3 +1,10 @@
+// ============================================================================
+// JsonRefelect - Reflection-based Json Serialization Library
+// By Sven van Huessen (https://www.svenvh.nl/)
+// Made as self-study project at Breda University of Applied Sciences
+// Licensed under the MIT License
+// https://github.com/Sven-vh/JsonReflect
+// ============================================================================
 #pragma once
 #include <type_traits>
 #include "JsonReflect_entry.hpp"

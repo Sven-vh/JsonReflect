@@ -1,3 +1,10 @@
+// ============================================================================
+// JsonRefelect - Reflection-based Json Serialization Library
+// By Sven van Huessen (https://www.svenvh.nl/)
+// Made as self-study project at Breda University of Applied Sciences
+// Licensed under the MIT License
+// https://github.com/Sven-vh/JsonReflect
+// ============================================================================
 #pragma once
 #include <type_traits>
 #include "JsonReflect_entry.hpp"
@@ -26,15 +33,41 @@ namespace JsonReflect {
 		template<typename T>
 		constexpr bool is_weak_pointer_v = is_weak_pointer_impl<std::remove_cv_t<T>>::value;
 
+		template<typename T>
+		struct smart_pointer_factory {
+			static std::shared_ptr<T> create() {
+				return std::make_shared<T>(); // Default implementation
+			}
+		};
+
+		/*
+		Custom smart pointer factory example
+		If you have a custom smart pointer type, you can specialize this struct to provide a way to create instances.
+
+		template<>
+		struct smart_pointer_factory<CustomObject> {
+			static std::shared_ptr<CustomObject> create() {
+				return std::make_shared<CustomObject>(0, "default");
+			}
+		};
+		*/
+
 		// Helper to construct smart pointers properly
 		template<typename T>
 		void initialize_smart_pointer(std::shared_ptr<T>& ptr) {
-			ptr = std::make_shared<T>();
+			ptr = Detail::smart_pointer_factory<T>::create();
 		}
 
 		template<typename T, typename Deleter>
 		void initialize_smart_pointer(std::unique_ptr<T, Deleter>& ptr) {
-			ptr = std::make_unique<T>();
+			static_assert(std::is_default_constructible_v<T>, "Type must be default constructible for unique_ptr deserialization");
+
+			if constexpr (std::is_same_v<Deleter, std::default_delete<T>>) {
+				ptr = std::make_unique<T>();
+			} else {
+				static_assert(std::is_default_constructible_v<Deleter>, "Custom deleter must be default constructible");
+				ptr = std::unique_ptr<T, Deleter>(new T(), Deleter{});
+			}
 		}
 	}
 
@@ -53,7 +86,7 @@ namespace JsonReflect {
 	std::enable_if_t<Detail::is_smart_pointer_v<T>, void>
 		tag_invoke(deserialize_default_t, const json& j, T& value) {
 		if (j.is_null()) {
-			value.reset();  // Explicitly set to null
+			value.reset();
 			return;
 		}
 
@@ -63,11 +96,15 @@ namespace JsonReflect {
 		}
 #else
 		if (!value) {
-			throw std::runtime_error("JsonReflect Error: Cannot deserialize to null smart pointer (enable JSON_REFLECT_INITIALIZE_SMART_POINTERS to auto-initialize)");
+			using element_type = typename T::element_type;
+			throw std::runtime_error(
+				std::string("JsonReflect Error: Cannot deserialize to null smart pointer for type '") +
+				typeid(element_type).name() +
+				"' (enable JSON_REFLECT_INITIALIZE_SMART_POINTERS to auto-initialize)"
+			);
 		}
 #endif
 		JsonReflect::from_json(j, *value);
-
 	}
 
 	/* [ Serialize ] Weak Pointers */
@@ -79,21 +116,5 @@ namespace JsonReflect {
 			return JsonReflect::to_json(*shared_ptr);
 		}
 		return json(nullptr);
-	}
-
-	/* [ Deserialize ] Weak Pointers */
-	template<typename T>
-	std::enable_if_t<Detail::is_weak_pointer_v<T>, void>
-		tag_invoke(deserialize_default_t, const json& j, T& value) {
-		if (j.is_null()) {
-			return;  // Nothing to do
-		}
-
-		auto shared_ptr = value.lock();
-		if (shared_ptr) {
-			JsonReflect::from_json(j, *shared_ptr);
-		} else {
-			throw std::runtime_error("JsonReflect Error: Cannot deserialize to expired weak_ptr");
-		}
 	}
 }

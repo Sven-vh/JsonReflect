@@ -142,11 +142,17 @@ TEST(JsonReflect, shared_ptr) {
 }
 
 TEST(JsonReflect, weak_ptr) {
-	{
-		auto sp = std::make_shared<int>(42);
-		std::weak_ptr<int> wp = sp;
-		serialize_test<std::weak_ptr<int>>(wp);
-	}
+	std::shared_ptr<int> sp = std::make_shared<int>(42);
+	std::weak_ptr<int> wp = sp;
+
+	/* Serialization, works! */
+	auto result = JsonReflect::to_json(wp);
+
+	const std::string json_str = result.dump(2);
+
+	/* Deserialization, not supported */
+	//std::weak_ptr<int> output;
+	//JsonReflect::from_json(result, output);
 }
 
 /* Custom Types */
