@@ -10,6 +10,8 @@
 #include "JsonReflect_entry.hpp"
 #include "JsonReflect_helpers.hpp"
 
+#include <variant>
+
 namespace JsonReflect {
 
 	namespace Detail {
@@ -69,6 +71,26 @@ namespace JsonReflect {
 				ptr = std::unique_ptr<T, Deleter>(new T(), Deleter{});
 			}
 		}
+
+		// Helper to deserialize variant at runtime index
+		template<std::size_t I = 0, typename... Types>
+		void deserialize_variant_at_index(std::size_t index, const json& j, std::variant<Types...>& value) {
+			if constexpr (I < sizeof...(Types)) {
+				if (I == index) {
+					using T = std::variant_alternative_t<I, std::variant<Types...>>;
+					T temp;
+					JsonReflect::from_json(j, temp);
+					value = std::move(temp);
+				} else {
+					deserialize_variant_at_index<I + 1>(index, j, value);
+				}
+			} else {
+				throw std::runtime_error(
+					"JsonReflect Error: Invalid variant index " + std::to_string(index) +
+					" during deserialization (max index: " + std::to_string(sizeof...(Types) - 1) + ")"
+				);
+			}
+		}
 	}
 
 	/* [ Serialize ] Smart Pointers, shared & unique */
@@ -123,5 +145,39 @@ namespace JsonReflect {
 	std::enable_if_t<Detail::is_weak_pointer_v<T>, void>
 		tag_invoke(deserialize_default_t, const json& j, T& value) {
 		static_assert(std::false_type::value, "JsonReflect Error: Deserialization of weak_ptr is not supported.");
+	}
+
+	/* [ Serialize ] std::variant */
+	template<typename... Types>
+	json tag_invoke(serialize_default_t, const std::variant<Types...>& value) {
+		json result;
+		result["index"] = value.index();
+		std::visit([&result](const auto& v) {
+			result["value"] = JsonReflect::to_json(v);
+			}, value);
+		return result;
+	}
+
+	/* [ Deserialize ] std::variant */
+	template<typename... Types>
+	void tag_invoke(deserialize_default_t, const json& j, std::variant<Types...>& value) {
+		if (!j.is_object()) {
+			throw std::runtime_error("JsonReflect Error: Expected JSON object for std::variant deserialization");
+		}
+
+		if (!j.contains("index") || !j.contains("value")) {
+			throw std::runtime_error("JsonReflect Error: Missing 'index' or 'value' field in variant JSON");
+		}
+
+		std::size_t index = j["index"].get<std::size_t>();
+
+		if (index >= sizeof...(Types)) {
+			throw std::runtime_error(
+				"JsonReflect Error: Variant index " + std::to_string(index) +
+				" out of range (variant has " + std::to_string(sizeof...(Types)) + " alternatives)"
+			);
+		}
+
+		Detail::deserialize_variant_at_index(index, j["value"], value);
 	}
 }

@@ -155,6 +155,20 @@ TEST(JsonReflect, weak_ptr) {
 	//JsonReflect::from_json(result, output);
 }
 
+#include <variant>
+
+/* variants */
+TEST(JsonReflect, variant) {
+	std::variant<int, std::string, bool> value = 42;
+	serialize_test(value);
+	
+	value = std::string("Hello, Variant!");
+	serialize_test(value);
+	
+	value = true;
+	serialize_test(value);
+}
+
 /* Custom Types */
 enum class Difficulty {
 	Easy,
