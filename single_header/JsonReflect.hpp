@@ -5,7 +5,7 @@
 // Made as self-study project at Breda University of Applied Sciences
 // https://github.com/Sven-vh/JsonReflect
 //
-// Generated: 2026-01-20 13:03:46
+// Generated: 2026-01-20 13:07:15
 // ============================================================================
 //
 // MIT License
@@ -28339,7 +28339,8 @@ namespace JsonReflect {
 	template<typename T>
 	std::enable_if_t<Detail::is_weak_pointer_v<T>, void>
 		tag_invoke(deserialize_default_t, const json& j, T& value) {
-		static_assert(std::false_type::value, "JsonReflect Error: Deserialization of weak_ptr is not supported.");
+		//static_assert(std::false_type::value, "JsonReflect Error: Deserialization of weak_ptr is not supported.");
+		throw std::runtime_error("JsonReflect Error: Deserialization of weak_ptr is not supported.");
 	}
 
 	/* [ Serialize ] std::variant */
