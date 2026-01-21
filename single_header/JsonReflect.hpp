@@ -5,7 +5,7 @@
 // Made as self-study project at Breda University of Applied Sciences
 // https://github.com/Sven-vh/JsonReflect
 //
-// Generated: 2026-01-20 13:07:15
+// Generated: 2026-01-21 16:32:48
 // ============================================================================
 //
 // MIT License
@@ -28146,6 +28146,20 @@ namespace JsonReflect {
 	template<typename T>
 	std::enable_if_t<Detail::is_json_compatible_v<T>, void> tag_invoke(deserialize_default_t, const json& j, T& value) {
 		value = j.get<T>();
+	}
+
+	/* [ Serialize ] Json type */
+	template <typename T>
+	std::enable_if_t<nlohmann::detail::is_basic_json<T>::value, json>
+		tag_invoke(serialize_default_t, const T& value) {
+		return value;
+	}
+
+	/* [ Deserialize ] Json type */
+	template <typename T>
+	std::enable_if_t<nlohmann::detail::is_basic_json<T>::value, void>
+		tag_invoke(deserialize_default_t, const json& j, T& value) {
+		value = j;
 	}
 
 	/* [ Serialize ] Enum types - serialize as string */
