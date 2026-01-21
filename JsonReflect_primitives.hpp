@@ -27,6 +27,20 @@ namespace JsonReflect {
 		value = j.get<T>();
 	}
 
+	/* [ Serialize ] Json type */
+	template <typename T>
+	std::enable_if_t<nlohmann::detail::is_basic_json<T>::value, json>
+		tag_invoke(serialize_default_t, const T& value) {
+		return value;
+	}
+
+	/* [ Deserialize ] Json type */
+	template <typename T>
+	std::enable_if_t<nlohmann::detail::is_basic_json<T>::value, void>
+		tag_invoke(deserialize_default_t, const json& j, T& value) {
+		value = j;
+	}
+
 	/* [ Serialize ] Enum types - serialize as string */
 	template<typename T>
 	std::enable_if_t<std::is_enum_v<T>, json> tag_invoke(serialize_lib_t, const T& value) {

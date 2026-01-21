@@ -296,3 +296,13 @@ TEST(JsonReflect, tag_invoke_custom_object) {
 	obj.value = 3.14f;
 	serialize_test(obj);
 }
+
+/* Json type */
+TEST(JsonReflect, json_type) {
+	JsonReflect::json j;
+	j["number"] = 42;
+	j["string"] = "Hello, JSON!";
+	j["array"] = {1, 2, 3};
+	j["object"] = { {"key", "value"} };
+	serialize_test(j);
+}
