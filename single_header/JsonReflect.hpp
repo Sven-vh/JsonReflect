@@ -5,7 +5,7 @@
 // Made as self-study project at Breda University of Applied Sciences
 // https://github.com/Sven-vh/JsonReflect
 //
-// Generated: 2026-01-21 16:32:48
+// Generated: 2026-01-21 19:26:52
 // ============================================================================
 //
 // MIT License
@@ -28185,19 +28185,23 @@ namespace JsonReflect {
 namespace nlohmann {
 	template <typename T>
 	struct adl_serializer<T, std::enable_if_t<JsonReflect::Detail::has_custom_to_json_v<T> || JsonReflect::Detail::has_custom_from_json_v<T>>> {
-		static std::enable_if_t<JsonReflect::Detail::has_custom_to_json_v<T>, void> to_json(json& j, const T& value) {
+		template <typename U = T, typename = std::enable_if_t<JsonReflect::Detail::has_custom_to_json_v<U>>>
+		static void to_json(json& j, const U& value) {
 			j = JsonReflect::to_json(value);
 		}
 
-		static std::enable_if_t<JsonReflect::Detail::has_custom_to_json_v<T>, void> to_json(ordered_json& j, const T& value) {
+		template <typename U = T, typename = std::enable_if_t<JsonReflect::Detail::has_custom_to_json_v<U>>>
+		static void to_json(ordered_json& j, const U& value) {
 			j = JsonReflect::to_json(value);
 		}
 
-		static std::enable_if_t<JsonReflect::Detail::has_custom_from_json_v<T>, void> from_json(const json& j, T& opt) {
+		template <typename U = T, typename = std::enable_if_t<JsonReflect::Detail::has_custom_from_json_v<U>>>
+		static void from_json(const json& j, U& opt) {
 			JsonReflect::from_json(j, opt);
 		}
 
-		static std::enable_if_t<JsonReflect::Detail::has_custom_from_json_v<T>, void> from_json(const ordered_json& j, T& opt) {
+		template <typename U = T, typename = std::enable_if_t<JsonReflect::Detail::has_custom_from_json_v<U>>>
+		static void from_json(const ordered_json& j, U& opt) {
 			JsonReflect::from_json(j, opt);
 		}
 	};
