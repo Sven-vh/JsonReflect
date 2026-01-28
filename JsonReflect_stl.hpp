@@ -11,6 +11,8 @@
 #include "JsonReflect_helpers.hpp"
 
 #include <variant>
+#include <string>
+#include <filesystem>
 
 namespace JsonReflect {
 
@@ -100,7 +102,8 @@ namespace JsonReflect {
 			std::is_same_v<T, std::string> ||
 			std::is_same_v<T, std::wstring> ||
 			std::is_same_v<T, std::string_view> ||
-			std::is_same_v<T, std::wstring_view>;
+			std::is_same_v<T, std::wstring_view> ||
+			std::is_same_v<T, std::filesystem::path>;
 
 		template<typename T>
 		struct is_container<T, std::void_t<
