@@ -335,12 +335,12 @@ TEST(JsonReflect, get_changes) {
 }
 
 struct JsonHolder {
-	nlohmann::json data = nlohmann::json::array();
+	nlohmann::json data{};
 };
 JSON_REFLECT(JsonHolder, data);
 
 TEST(JsonReflect, json_holder) {
-	JsonHolder holder;
+	JsonHolder holder{};
 	holder.data["key1"] = "value1";
 	holder.data["key2"] = 42;
 	holder.data["nested"] = { {"nkey", "nvalue"} };
@@ -349,11 +349,11 @@ TEST(JsonReflect, json_holder) {
 
 /* diffing */
 TEST(JsonReflect, json_holder_diff) {
-	JsonHolder holder1;
+	JsonHolder holder1{};
 	holder1.data["key1"] = "value1";
 	holder1.data["key2"] = 42;
 	holder1.data["nested"] = { {"nkey", "nvalue"} };
-	JsonHolder holder2;
+	JsonHolder holder2{};
 	holder2.data["key1"] = "value1_modified";
 	holder2.data["key2"] = 43;
 	holder2.data["nested"] = { {"nkey", "nvalue_modified"} };
