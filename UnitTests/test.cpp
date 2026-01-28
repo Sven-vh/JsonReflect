@@ -161,10 +161,10 @@ TEST(JsonReflect, weak_ptr) {
 TEST(JsonReflect, variant) {
 	std::variant<int, std::string, bool> value = 42;
 	serialize_test(value);
-	
+
 	value = std::string("Hello, Variant!");
 	serialize_test(value);
-	
+
 	value = true;
 	serialize_test(value);
 }
@@ -302,7 +302,90 @@ TEST(JsonReflect, json_type) {
 	JsonReflect::json j;
 	j["number"] = 42;
 	j["string"] = "Hello, JSON!";
-	j["array"] = {1, 2, 3};
+	j["array"] = { 1, 2, 3 };
 	j["object"] = { {"key", "value"} };
 	serialize_test(j);
+
+	JsonReflect::json j2 = nullptr;
+	serialize_test(j2);
+
+	JsonReflect::json j3 = JsonReflect::json::object();
+	serialize_test(j3);
+}
+
+/* Json Diff */
+TEST(JsonReflect, get_changes) {
+	ns::NestedSettings settings1;
+	settings1.player_name = "PlayerOne";
+	settings1.game_settings.volume = 75;
+	settings1.game_settings.fullscreen = false;
+	settings1.game_settings.difficulty = Difficulty::Hard;
+
+	ns::NestedSettings settings2;
+	settings2.player_name = "PlayerTwo";
+	settings2.game_settings.volume = 50;
+	settings2.game_settings.fullscreen = true;
+	settings2.game_settings.difficulty = Difficulty::Medium;
+
+	auto json_settings1 = JsonReflect::to_json(settings1);
+	auto json_settings2 = JsonReflect::to_json(settings2);
+	auto diff = nlohmann::json::diff(json_settings1, json_settings2);
+
+	serialize_test(diff);
+}
+
+struct JsonHolder {
+	nlohmann::json data = nlohmann::json::array();
+};
+JSON_REFLECT(JsonHolder, data);
+
+TEST(JsonReflect, json_holder) {
+	JsonHolder holder;
+	holder.data["key1"] = "value1";
+	holder.data["key2"] = 42;
+	holder.data["nested"] = { {"nkey", "nvalue"} };
+	serialize_test(holder);
+}
+
+/* diffing */
+TEST(JsonReflect, json_holder_diff) {
+	JsonHolder holder1;
+	holder1.data["key1"] = "value1";
+	holder1.data["key2"] = 42;
+	holder1.data["nested"] = { {"nkey", "nvalue"} };
+	JsonHolder holder2;
+	holder2.data["key1"] = "value1_modified";
+	holder2.data["key2"] = 43;
+	holder2.data["nested"] = { {"nkey", "nvalue_modified"} };
+	auto json_holder1 = JsonReflect::to_json(holder1);
+	auto json_holder2 = JsonReflect::to_json(holder2);
+	auto diff = nlohmann::json::diff(json_holder1, json_holder2);
+	serialize_test(diff);
+}
+
+struct MyStruct {
+	int a = 42;
+	float n = 3.14f;
+	bool c = true;
+};
+
+JsonReflect::json tag_invoke(JsonReflect::serialize_t, const MyStruct& value, bool prop) {
+	return {};
+}
+
+JsonReflect::json tag_invoke(JsonReflect::serialize_t, const MyStruct& value) {
+	return {};
+}
+
+TEST(JsonReflect, tag_invoke_only_serialize) {
+	MyStruct input;
+	auto result = JsonReflect::to_json(input, true);
+
+	std::vector<MyStruct> input_1;
+	input_1.push_back(MyStruct{});
+	auto result_1 = JsonReflect::to_json(input_1);
+
+	std::vector<MyStruct> input_2;
+	input_2.push_back(MyStruct{});
+	auto result_2 = JsonReflect::to_json(input_2, true, true);
 }

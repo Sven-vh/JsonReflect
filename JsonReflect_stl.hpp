@@ -91,6 +91,57 @@ namespace JsonReflect {
 				);
 			}
 		}
+
+		template<typename T, typename = void>
+		struct is_container : std::false_type {};
+
+		template<typename T>
+		inline constexpr bool is_string_v =
+			std::is_same_v<T, std::string> ||
+			std::is_same_v<T, std::wstring> ||
+			std::is_same_v<T, std::string_view> ||
+			std::is_same_v<T, std::wstring_view>;
+
+		template<typename T>
+		struct is_container<T, std::void_t<
+			decltype(std::declval<T>().begin()),
+			decltype(std::declval<T>().end()),
+			typename T::value_type>
+		> : std::bool_constant<!is_string_v<T>> {
+		};
+
+		template<typename T>
+		inline constexpr bool is_container_v = is_container<T>::value;
+	}
+
+	/* [ Serialize ] Any container with arguments */
+	template<typename Container, typename... Args>
+	std::enable_if_t<
+		Detail::is_container_v<Container>
+		&& (sizeof...(Args) > 0),
+		json>
+		tag_invoke(serialize_lib_t, const Container& container, Args&&... args) {
+		json j = json::array();
+		for (const auto& element : container) {
+			j.push_back(to_json(element, std::forward<Args>(args)...));
+		}
+		return j;
+	}
+
+	/* [ Deserialize ] Any container with arguments */
+	template<typename Container, typename... Args>
+	std::enable_if_t<
+		Detail::is_container_v<Container>
+		&& (sizeof...(Args) > 0),
+		void
+		>
+		tag_invoke(deserialize_lib_t, const json& j, Container& container, Args&&... args) {
+		container.clear();
+		for (const auto& element_json : j) {
+			typename Container::value_type element;
+			from_json(element_json, element, std::forward<Args>(args)...);
+			container.insert(container.end(), std::move(element));
+		}
 	}
 
 	/* [ Serialize ] Smart Pointers, shared & unique */
