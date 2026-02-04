@@ -5,7 +5,7 @@
 // Made as self-study project at Breda University of Applied Sciences
 // https://github.com/Sven-vh/JsonReflect
 //
-// Generated: 2026-01-21 19:26:52
+// Generated: 2026-02-04 10:19:00
 // ============================================================================
 //
 // MIT License
