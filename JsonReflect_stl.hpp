@@ -73,16 +73,16 @@ namespace JsonReflect {
 		}
 
 		// Helper to deserialize variant at runtime index
-		template<std::size_t I = 0, typename... Types>
-		void deserialize_variant_at_index(std::size_t index, const json& j, std::variant<Types...>& value) {
+        template <std::size_t I = 0, typename... Types, typename... Args>
+        void deserialize_variant_at_index(std::size_t index, const json& j, std::variant<Types...>& value, Args... args) {
 			if constexpr (I < sizeof...(Types)) {
 				if (I == index) {
 					using T = std::variant_alternative_t<I, std::variant<Types...>>;
 					T temp;
-					JsonReflect::from_json(j, temp);
+					JsonReflect::from_json(j, temp, std::forward<Args>(args)...);
 					value = std::move(temp);
 				} else {
-					deserialize_variant_at_index<I + 1>(index, j, value);
+					deserialize_variant_at_index<I + 1>(index, j, value, std::forward<Args>(args)...);
 				}
 			} else {
 				throw std::runtime_error(
@@ -149,19 +149,19 @@ namespace JsonReflect {
 	}
 
 	/* [ Serialize ] std::variant */
-	template<typename... Types>
-	json tag_invoke(serialize_default_t, const std::variant<Types...>& value) {
+    template <typename... Types, typename... Args>
+	json tag_invoke(serialize_default_t, const std::variant<Types...>& value, Args... args) {
 		json result;
 		result["index"] = value.index();
-		std::visit([&result](const auto& v) {
-			result["value"] = JsonReflect::to_json(v);
+		std::visit([&result, &args...](const auto& v) {
+			result["value"] = JsonReflect::to_json(v, std::forward<Args>(args)...);
 			}, value);
 		return result;
 	}
 
 	/* [ Deserialize ] std::variant */
-	template<typename... Types>
-	void tag_invoke(deserialize_default_t, const json& j, std::variant<Types...>& value) {
+    template <typename... Types, typename... Args>
+    void tag_invoke(deserialize_default_t, const json& j, std::variant<Types...>& value, Args... args) {
 		if (!j.is_object()) {
 			throw std::runtime_error("JsonReflect Error: Expected JSON object for std::variant deserialization");
 		}
@@ -179,6 +179,6 @@ namespace JsonReflect {
 			);
 		}
 
-		Detail::deserialize_variant_at_index(index, j["value"], value);
+		Detail::deserialize_variant_at_index(index, j["value"], value, std::forward<Args>(args)...);
 	}
 }
