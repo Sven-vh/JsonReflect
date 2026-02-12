@@ -37,6 +37,19 @@ namespace JsonReflect {
 		template<typename T>
 		constexpr bool is_weak_pointer_v = is_weak_pointer_impl<std::remove_cv_t<T>>::value;
 
+		// Detect associative containers (map, unordered_map, multimap, etc.)
+		template<typename T, typename = void>
+		struct is_associative_container : std::false_type {};
+
+		template<typename T>
+		struct is_associative_container<T, std::void_t<
+			typename T::key_type,
+			typename T::mapped_type
+			>> : std::true_type {};
+
+		template<typename T>
+		inline constexpr bool is_associative_container_v = is_associative_container<T>::value;
+
 		template<typename T>
 		struct smart_pointer_factory {
 			static std::shared_ptr<T> create() {
@@ -75,8 +88,8 @@ namespace JsonReflect {
 		}
 
 		// Helper to deserialize variant at runtime index
-        template <std::size_t I = 0, typename... Types, typename... Args>
-        void deserialize_variant_at_index(std::size_t index, const json& j, std::variant<Types...>& value, Args... args) {
+		template <std::size_t I = 0, typename... Types, typename... Args>
+		void deserialize_variant_at_index(std::size_t index, const json& j, std::variant<Types...>& value, Args... args) {
 			if constexpr (I < sizeof...(Types)) {
 				if (I == index) {
 					using T = std::variant_alternative_t<I, std::variant<Types...>>;
@@ -140,10 +153,26 @@ namespace JsonReflect {
 		>
 		tag_invoke(deserialize_lib_t, const json& j, Container& container, Args&&... args) {
 		container.clear();
-		for (const auto& element_json : j) {
-			typename Container::value_type element;
-			from_json(element_json, element, std::forward<Args>(args)...);
-			container.insert(container.end(), std::move(element));
+
+		if constexpr (Detail::is_associative_container_v<Container>) {
+			// For maps/sets: value_type has const members, can't deserialize directly
+			for (const auto& element_json : j) {
+				// Create a non-const version we can actually deserialize
+				using key_type = typename Container::key_type;
+				using mapped_type = typename Container::mapped_type;
+
+				std::pair<key_type, mapped_type> temp_pair;
+				from_json(element_json, temp_pair, std::forward<Args>(args)...);
+
+				container.insert(std::move(temp_pair));
+			}
+		} else {
+			// For vectors/lists/etc: normal deserialization works
+			for (const auto& element_json : j) {
+				typename Container::value_type element;
+				from_json(element_json, element, std::forward<Args>(args)...);
+				container.insert(container.end(), std::move(element));
+			}
 		}
 	}
 
@@ -203,7 +232,7 @@ namespace JsonReflect {
 	}
 
 	/* [ Serialize ] std::variant */
-    template <typename... Types, typename... Args>
+	template <typename... Types, typename... Args>
 	json tag_invoke(serialize_default_t, const std::variant<Types...>& value, Args... args) {
 		json result;
 		result["index"] = value.index();
@@ -214,8 +243,8 @@ namespace JsonReflect {
 	}
 
 	/* [ Deserialize ] std::variant */
-    template <typename... Types, typename... Args>
-    void tag_invoke(deserialize_default_t, const json& j, std::variant<Types...>& value, Args... args) {
+	template <typename... Types, typename... Args>
+	void tag_invoke(deserialize_default_t, const json& j, std::variant<Types...>& value, Args... args) {
 		if (!j.is_object()) {
 			throw std::runtime_error("JsonReflect Error: Expected JSON object for std::variant deserialization");
 		}
