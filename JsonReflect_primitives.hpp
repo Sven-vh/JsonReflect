@@ -30,6 +30,7 @@ namespace JsonReflect {
 		/* Lose args */
 		/* If you know a way to fix this, let me know by making issue/PR */
 		j.get_to(value);
+		//value = j.get<T>();
 	}
 
 	/* [ Serialize ] Json type */

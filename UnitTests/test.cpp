@@ -389,3 +389,22 @@ TEST(JsonReflect, tag_invoke_only_serialize) {
 	input_2.push_back(MyStruct{});
 	auto result_2 = JsonReflect::to_json(input_2, true, true);
 }
+
+/* Maps with custom structs */
+struct MyValue {
+	int a = 42;
+	float b = 3.14f;
+	std::string c = "Hello";
+};
+JSON_REFLECT(MyValue, a, b, c);
+
+TEST(JsonReflect, map_with_custom_struct) {
+	std::unordered_map<std::string, MyValue> my_map = { {"first", {42, 3.14f, "Hello"}}, {"second", {24, 2.71f, "World"}} };
+
+	auto result = JsonReflect::to_json(my_map);
+
+	const std::string json_str = result.dump(2);
+
+	std::unordered_map<std::string, MyValue> output{};
+	JsonReflect::from_json(result, output, 5);
+}

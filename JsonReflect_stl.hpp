@@ -155,19 +155,22 @@ namespace JsonReflect {
 		container.clear();
 
 		if constexpr (Detail::is_associative_container_v<Container>) {
-			// For maps/sets: value_type has const members, can't deserialize directly
-			for (const auto& element_json : j) {
-				// Create a non-const version we can actually deserialize
+			// For maps: JSON is an object {"key": value}, not an array
+			for (const auto& [key_json, value_json] : j.items()) {
 				using key_type = typename Container::key_type;
 				using mapped_type = typename Container::mapped_type;
 
-				std::pair<key_type, mapped_type> temp_pair;
-				from_json(element_json, temp_pair, std::forward<Args>(args)...);
+				key_type key;
+				from_json(key_json, key, std::forward<Args>(args)...);
 
-				container.insert(std::move(temp_pair));
+				mapped_type value;
+				from_json(value_json, value, std::forward<Args>(args)...);
+
+				// Insert the key-value pair
+				container.emplace(std::move(key), std::move(value));
 			}
 		} else {
-			// For vectors/lists/etc: normal deserialization works
+			// For vectors/lists/etc: JSON is an array [elem1, elem2, ...]
 			for (const auto& element_json : j) {
 				typename Container::value_type element;
 				from_json(element_json, element, std::forward<Args>(args)...);
