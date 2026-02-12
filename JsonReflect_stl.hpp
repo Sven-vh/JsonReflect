@@ -152,31 +152,50 @@ namespace JsonReflect {
 		void
 		>
 		tag_invoke(deserialize_lib_t, const json& j, Container& container, Args&&... args) {
-		container.clear();
+        container.clear();
 
-		if constexpr (Detail::is_associative_container_v<Container>) {
-			// For maps: JSON is an object {"key": value}, not an array
-			for (const auto& [key_json, value_json] : j.items()) {
-				using key_type = typename Container::key_type;
-				using mapped_type = typename Container::mapped_type;
+        if constexpr (Detail::is_associative_container_v<Container>) {
+            // For maps: JSON is an object {"key": value}
+            for (const auto& [key_str, value_json] : j.items()) {
+                using key_type = typename Container::key_type;
+                using mapped_type = typename Container::mapped_type;
 
-				key_type key;
-				from_json(key_json, key, std::forward<Args>(args)...);
+                // Handle key conversion from JSON string
+                key_type key;
+                if constexpr (std::is_same_v<key_type, std::string>) {
+                    // String keys: use directly
+                    key = key_str;
+                } else if constexpr (std::is_arithmetic_v<key_type>) {
+                    // Numeric keys: parse from string
+                    if constexpr (std::is_integral_v<key_type>) {
+                        if constexpr (std::is_unsigned_v<key_type>) {
+                            key = static_cast<key_type>(std::stoull(key_str));
+                        } else {
+                            key = static_cast<key_type>(std::stoll(key_str));
+                        }
+                    } else {
+                        key = static_cast<key_type>(std::stod(key_str));
+                    }
+                } else {
+                    // Complex keys: deserialize from JSON string representation
+                    json key_json = json::parse(key_str);
+                    from_json(key_json, key, std::forward<Args>(args)...);
+                }
 
-				mapped_type value;
-				from_json(value_json, value, std::forward<Args>(args)...);
+                // Deserialize the value
+                mapped_type value;
+                from_json(value_json, value, std::forward<Args>(args)...);
 
-				// Insert the key-value pair
-				container.emplace(std::move(key), std::move(value));
-			}
-		} else {
-			// For vectors/lists/etc: JSON is an array [elem1, elem2, ...]
-			for (const auto& element_json : j) {
-				typename Container::value_type element;
-				from_json(element_json, element, std::forward<Args>(args)...);
-				container.insert(container.end(), std::move(element));
-			}
-		}
+                container.emplace(std::move(key), std::move(value));
+            }
+        } else {
+            // For vectors/lists/etc: JSON is an array
+            for (const auto& element_json : j) {
+                typename Container::value_type element;
+                from_json(element_json, element, std::forward<Args>(args)...);
+                container.insert(container.end(), std::move(element));
+            }
+        }
 	}
 
 	/* [ Serialize ] Smart Pointers, shared & unique */
