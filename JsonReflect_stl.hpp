@@ -198,6 +198,26 @@ namespace JsonReflect {
         }
 	}
 
+	/* [ Deserialize ] std::array - fixed size, no clear/insert */
+    template <typename T, std::size_t N, typename... Args>
+    std::enable_if_t<(sizeof...(Args) > 0), void> 
+		tag_invoke(deserialize_lib_t, const json& j, std::array<T, N>& container, Args&&... args) {
+        for (std::size_t i = 0; i < N && i < j.size(); ++i) {
+            from_json(j[i], container[i], std::forward<Args>(args)...);
+        }
+    }
+
+    /* [ Serialize ] std::array - same as container but explicit */
+    template <typename T, std::size_t N, typename... Args>
+    std::enable_if_t<(sizeof...(Args) > 0), json> 
+		tag_invoke(serialize_lib_t, const std::array<T, N>& container, Args&&... args) {
+        json j = json::array();
+        for (const auto& element : container) {
+            j.push_back(to_json(element, std::forward<Args>(args)...));
+        }
+        return j;
+    }
+
 	/* [ Serialize ] Smart Pointers, shared & unique */
 	template<typename T>
 	std::enable_if_t<Detail::is_smart_pointer_v<T>, json>
