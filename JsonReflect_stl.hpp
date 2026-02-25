@@ -257,7 +257,7 @@ namespace JsonReflect {
 	/* [ Serialize ] Weak Pointers */
 	template<typename T>
 	std::enable_if_t<Detail::is_weak_pointer_v<T>, json>
-		tag_invoke(serialize_default_t, const T& value) {
+		tag_invoke(serialize_lib_t, const T& value) {
 		auto shared_ptr = value.lock();
 		if (shared_ptr) {
 			return JsonReflect::to_json(*shared_ptr);
@@ -268,14 +268,14 @@ namespace JsonReflect {
 	/* [ Deserialize ] Weak Pointers - Not supported */
 	template<typename T>
 	std::enable_if_t<Detail::is_weak_pointer_v<T>, void>
-		tag_invoke(deserialize_default_t, const json& j, T& value) {
+		tag_invoke(deserialize_lib_t, const json& j, T& value) {
 		//static_assert(std::false_type::value, "JsonReflect Error: Deserialization of weak_ptr is not supported.");
 		throw std::runtime_error("JsonReflect Error: Deserialization of weak_ptr is not supported.");
 	}
 
 	/* [ Serialize ] std::variant */
 	template <typename... Types, typename... Args>
-	json tag_invoke(serialize_default_t, const std::variant<Types...>& value, Args... args) {
+    json tag_invoke(serialize_lib_t, const std::variant<Types...>& value, Args... args) {
 		json result;
 		result["index"] = value.index();
 		std::visit([&result, &args...](const auto& v) {
@@ -286,7 +286,7 @@ namespace JsonReflect {
 
 	/* [ Deserialize ] std::variant */
 	template <typename... Types, typename... Args>
-	void tag_invoke(deserialize_default_t, const json& j, std::variant<Types...>& value, Args... args) {
+    void tag_invoke(deserialize_lib_t, const json& j, std::variant<Types...>& value, Args... args) {
 		if (!j.is_object()) {
 			throw std::runtime_error("JsonReflect Error: Expected JSON object for std::variant deserialization");
 		}
