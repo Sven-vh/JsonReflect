@@ -78,6 +78,15 @@ namespace JsonReflect {
 		template<typename T>
 		struct delta_serialize : std::false_type {};
 
+		template<typename T>
+		struct delta_default {
+			/* Default, assumse default-constructible */
+			static T make() {
+				static_assert(std::is_default_constructible_v<T>, "JsonReflect: T is not default-constructible. Implement/specialize delta_default<T> to provide a baseline instance.");
+				return T{};
+			}
+		};
+
 		/* Check if type can be serialized */
 		template <typename T, typename... Args>
 		inline constexpr bool has_to_json_v =
@@ -176,9 +185,9 @@ namespace JsonReflect {
 			if constexpr (delta_serialize_v) {
 				/* Delta serialize, only save member variables changed */
 #if JSON_REFLECT_STATIC_FOR_DELTA
-				static T compare{};
+				static T compare = delta_default<T>::make();
 #else
-				const T compare{};
+				const T compare = delta_default<T>::make();
 #endif
 				visit_struct::context<serialize_lib_t>::for_each(value, compare, [&](const char* name, const auto& field_value, const auto& field_compare) {
 					using Field_T = std::decay_t<decltype(field_value)>;

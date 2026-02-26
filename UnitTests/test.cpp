@@ -432,3 +432,37 @@ TEST(JsonReflect, delta_serialization) {
 
 	serialize_test(obj);
 }
+
+/* Struct with delta serialization NOT default constructible */
+struct NonDefaultConstructible {
+	int a;
+	float b;
+	bool c;
+	std::string d;
+	std::vector<int> vec;
+	std::variant<int, std::string> var;
+	NonDefaultConstructible(int a, float b, bool c, std::string d, std::vector<int> vec, std::variant<int, std::string> var)
+		: a(a), b(b), c(c), d(d), vec(vec), var(var) {
+	}
+};
+JSON_REFLECT(NonDefaultConstructible, a, b, c, d, vec, var);
+
+template<>
+struct JsonReflect::Detail::delta_serialize<NonDefaultConstructible> : std::true_type {};
+
+template<>
+struct JsonReflect::Detail::delta_default<NonDefaultConstructible> {
+	static NonDefaultConstructible make() {
+		return NonDefaultConstructible{ 0, 0.0f, false, "", {}, 0 };
+	}
+};
+
+TEST(JsonReflect, delta_serialization_non_default_constructible) {
+	NonDefaultConstructible obj{ 0, 0.0f, false, "", {}, 0 };
+	/* only change b and c */
+	obj.b = 2.71f;
+	obj.c = true;
+
+	auto result = JsonReflect::to_json(obj);
+	auto string_result = result.dump(4);
+}
