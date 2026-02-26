@@ -415,8 +415,11 @@ struct DeltaStruct {
 	float b = 3.14f;
 	bool c = true;
 	std::string d = "Hello";
+
+	std::vector<int> vec = { 1, 2, 3, 4, 5 };
+	std::variant<int, std::string> var = 42;
 };
-JSON_REFLECT(DeltaStruct, a, b, c, d);
+JSON_REFLECT(DeltaStruct, a, b, c, d, vec, var);
 
 template<>
 struct JsonReflect::Detail::delta_serialize<DeltaStruct> : std::true_type {};

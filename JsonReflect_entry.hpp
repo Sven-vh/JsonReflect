@@ -122,30 +122,29 @@ namespace JsonReflect {
 			!has_custom_to_json_v<uncvref_t<T>> &&
 			!has_custom_from_json_v<uncvref_t<T>>;
 
-		/* Source: https://stackoverflow.com/a/49004530 */
-		template<class T, class R, class ... Args>
-		std::is_convertible<std::invoke_result_t<T, Args...>, R> is_invokable_test(int);
-
-		template<class T, class R, class ... Args>
-		std::false_type is_invokable_test(...);
-
-		template<class T, class R, class ... Args>
-		using is_invokable = decltype(is_invokable_test<T, R, Args...>(0));
-
-		template<class T, class R, class ... Args>
-		constexpr auto is_invokable_v = is_invokable<T, R, Args...>::value;
-
 		/* == */
-		template<class L, class R = L>
-		using has_equality = is_invokable<std::equal_to<>, bool, L, R>;
-		template<class L, class R = L>
-		constexpr auto has_equality_v = has_equality<L, R>::value;
+		template<typename T, typename = void>
+		struct is_equality_comparable : std::false_type {};
+
+		template<typename T>
+		struct is_equality_comparable<T, std::void_t<
+			decltype(std::declval<const T&>() == std::declval<const T&>())
+			>> : std::true_type {};
+
+		template<typename T>
+		constexpr bool is_equality_comparable_v = is_equality_comparable<T>::value;
 
 		/* != */
-		template<class L, class R = L>
-		using has_inequality = is_invokable<std::not_equal_to<>, bool, L, R>;
-		template<class L, class R = L>
-		constexpr auto has_inequality_v = has_inequality<L, R>::value;
+		template<typename T, typename = void>
+		struct is_inequality_comparable : std::false_type {};
+
+		template<typename T>
+		struct is_inequality_comparable<T, std::void_t<
+			decltype(std::declval<const T&>() != std::declval<const T&>())
+			>> : std::true_type {};
+
+		template<typename T>
+		constexpr bool is_inequality_comparable_v = is_inequality_comparable<T>::value;
 
 		template <typename T, typename... Args>
 		static json to_json_visitable(const T& value, Args&&... args) {
@@ -161,10 +160,10 @@ namespace JsonReflect {
 #endif
 				visit_struct::context<serialize_lib_t>::for_each(value, compare, [&](const char* name, const auto& field_value, const auto& field_compare) {
 					using Field_T = std::decay_t<decltype(field_value)>;
-					if constexpr (has_equality_v<Field_T>) {
+					if constexpr (is_equality_comparable_v<Field_T>) {
 						if (field_value == field_compare) return;
 						j[name] = to_json(field_value, std::forward<Args>(args)...);
-					} else if constexpr (has_inequality_v<Field_T>) {
+					} else if constexpr (is_inequality_comparable_v<Field_T>) {
 						if (field_value != field_compare)
 							j[name] = to_json(field_value, std::forward<Args>(args)...);
 					} else {
