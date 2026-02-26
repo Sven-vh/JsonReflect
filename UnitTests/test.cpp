@@ -408,3 +408,24 @@ TEST(JsonReflect, map_with_custom_struct) {
 	std::unordered_map<std::string, MyValue> output{};
 	JsonReflect::from_json(result, output, 5);
 }
+
+/* Struct with delta serialization */
+struct DeltaStruct {
+	int a = 42;
+	float b = 3.14f;
+	bool c = true;
+	std::string d = "Hello";
+};
+JSON_REFLECT(DeltaStruct, a, b, c, d);
+
+template<>
+struct JsonReflect::Detail::delta_serialize<DeltaStruct> : std::true_type {};
+
+TEST(JsonReflect, delta_serialization) {
+	DeltaStruct obj{};
+	/* only change b and c */
+	obj.b = 2.71f;
+	obj.c = false;
+
+	serialize_test(obj);
+}

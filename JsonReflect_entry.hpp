@@ -7,6 +7,20 @@
 // ============================================================================
 #pragma once
 
+/* Configuration */
+
+/* Whether to use a static instance when comparing for delta (using static causes less allocations) */
+/* See Detail::to_json_visitable for usage */
+#ifndef JSON_REFLECT_STATIC_FOR_DELTA
+#define JSON_REFLECT_STATIC_FOR_DELTA 1
+#endif
+
+/* Whether to allow json compare when calculating delta (serializes object twice and compares, can be more expensive) */
+/* See Detail::to_json_visitable for usage */
+#ifndef JSON_REFLECT_ALLOW_JSON_COMPARE
+#define JSON_REFLECT_ALLOW_JSON_COMPARE 1
+#endif
+
 /* Disable implicit nlohmann conversion */
 /* this is to avoid confusion with templates that are exidently converted to json objects */
 #ifndef JSON_USE_IMPLICIT_CONVERSIONS
@@ -59,6 +73,10 @@ namespace JsonReflect {
 		template<typename T, typename CONTEXT> /* Has a visitable struct implementation */
 		constexpr bool is_visitable_v = visit_struct::traits::is_visitable<T, CONTEXT>::value;
 
+		/* Whether or not a type should only serialize it's changes */
+		template<typename T>
+		struct delta_serialize : std::false_type {};
+
 		/* Check if type can be serialized */
 		template <typename T, typename... Args>
 		inline constexpr bool has_to_json_v =
@@ -104,12 +122,74 @@ namespace JsonReflect {
 			!has_custom_to_json_v<uncvref_t<T>> &&
 			!has_custom_from_json_v<uncvref_t<T>>;
 
+		/* Source: https://stackoverflow.com/a/49004530 */
+		template<class T, class R, class ... Args>
+		std::is_convertible<std::invoke_result_t<T, Args...>, R> is_invokable_test(int);
+
+		template<class T, class R, class ... Args>
+		std::false_type is_invokable_test(...);
+
+		template<class T, class R, class ... Args>
+		using is_invokable = decltype(is_invokable_test<T, R, Args...>(0));
+
+		template<class T, class R, class ... Args>
+		constexpr auto is_invokable_v = is_invokable<T, R, Args...>::value;
+
+		/* == */
+		template<class L, class R = L>
+		using has_equality = is_invokable<std::equal_to<>, bool, L, R>;
+		template<class L, class R = L>
+		constexpr auto has_equality_v = has_equality<L, R>::value;
+
+		/* != */
+		template<class L, class R = L>
+		using has_inequality = is_invokable<std::not_equal_to<>, bool, L, R>;
+		template<class L, class R = L>
+		constexpr auto has_inequality_v = has_inequality<L, R>::value;
+
 		template <typename T, typename... Args>
 		static json to_json_visitable(const T& value, Args&&... args) {
 			json j;
-			visit_struct::context<serialize_lib_t>::for_each(value, [&](const char* name, const auto& field) {
-				j[name] = to_json(field, std::forward<Args>(args)...);
-				});
+
+			constexpr bool delta_serialize_v = delta_serialize<T>::value;
+			if constexpr (delta_serialize_v) {
+				/* Delta serialize, only save member variables changed */
+#if JSON_REFLECT_STATIC_FOR_DELTA
+				static T compare{};
+#else
+				const T compare{};
+#endif
+				visit_struct::context<serialize_lib_t>::for_each(value, compare, [&](const char* name, const auto& field_value, const auto& field_compare) {
+					using Field_T = std::decay_t<decltype(field_value)>;
+					if constexpr (has_equality_v<Field_T>) {
+						if (field_value == field_compare) return;
+						j[name] = to_json(field_value, std::forward<Args>(args)...);
+					} else if constexpr (has_inequality_v<Field_T>) {
+						if (field_value != field_compare)
+							j[name] = to_json(field_value, std::forward<Args>(args)...);
+					} else {
+#if JSON_REFLECT_ALLOW_JSON_COMPARE
+						/* ! EXPENSIVE ! */
+						/* No equality operator, serialize both and compare json */
+						auto field_json = to_json(field_value, std::forward<Args>(args)...);
+						auto compare_json = to_json(field_compare, std::forward<Args>(args)...);
+						if (field_json != compare_json) {
+							j[name] = std::move(field_json);
+							return;
+						} else {
+							return; /* No change, skip */
+						}
+#else
+						static_assert(svh::always_false<Field_T>::value, "JsonSerializer Error: Type T is set to delta serialize but has no equality operator, inequality operator and macro JSON_REFLECT_ALLOW_JSON_COMPARE is disabled.");
+#endif
+					}
+					});
+			} else {
+				/* Default serialize */
+				visit_struct::context<serialize_lib_t>::for_each(value, [&](const char* name, const auto& field) {
+					j[name] = to_json(field, std::forward<Args>(args)...);
+					});
+			}
 			return j;
 		}
 

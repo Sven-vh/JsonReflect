@@ -174,6 +174,47 @@ If no implementation is found:
 "JsonSerializer Error: No suitable serialize implementation found for type T"
 ```
 
+## Delta Serialization
+
+Delta serialization is a feature that allows you to serialize only the changes made to an object since the last serialization. This can be useful for smaller JSON files.
+
+```cpp
+struct MyStruct {
+	int a = 42;
+	float b = 3.14f;
+	bool c = true;
+	std::string d = "Hello";
+};
+JSON_REFLECT(MyStruct, a, b, c, d);
+
+/* Mark this struct to use delta serialization */
+template<>
+struct JsonReflect::Detail::delta_serialize<MyStruct> : std::true_type {};
+
+MyStruct input{};
+/* only change a couple of fields */
+input.a = 100;
+input.b = 2.71f;
+json j = JsonReflect::to_json(input);
+```
+
+**Result** (``c`` and ``d`` fields are omitted)
+```json
+{
+	"a": 100,
+	"b": 2.71
+}
+```
+
+> [!IMPORTANT]
+> Delta serialization only works on default-constructible types. By default, it uses the ``==`` and ``!=`` operators on the member variables to detect changes. If these are not present for a type, it uses a fallback mechanism that may not be as efficient. (See ``JsonReflect::Detail::to_json_visitable`` in ``JsonReflect_entry.hpp``)
+
+## Macros
+
+**``JSON_REFLECT_STATIC_FOR_DELTA``**: Whether to use a static instance when comparing for delta (using static causes less allocations but keeps it alive)
+
+**``JSON_REFLECT_ALLOW_JSON_COMPARE``**: Whether to allow JSON compare when calculating delta (serializes object twice and compares, can be more expensive)
+
 ## Dependencies
 
 All dependencies are included in the single header file. If using separate headers (or check ``extern/`` folder):
