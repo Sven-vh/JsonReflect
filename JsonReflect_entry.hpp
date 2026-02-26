@@ -141,21 +141,6 @@ namespace JsonReflect {
 			decltype(std::declval<const T&>() == std::declval<const T&>())
 			>> : std::true_type {};
 
-		// std::vector: only comparable if element type is
-		template <typename T, typename Alloc>
-		struct is_equality_comparable<std::vector<T, Alloc>> : is_equality_comparable<T> {};
-
-		// std::variant: only comparable if ALL alternatives are
-		template <typename... Ts>
-		struct is_equality_comparable<std::variant<Ts...>> : std::conjunction<is_equality_comparable<Ts>...> {};
-
-		// std::optional: only comparable if value type is
-		template <typename T>
-		struct is_equality_comparable<std::optional<T>> : is_equality_comparable<T> {};
-
-		template<typename T>
-		constexpr bool is_equality_comparable_v = is_equality_comparable<T>::value;
-
 		/* != */
 		template<typename T, typename = void>
 		struct is_inequality_comparable : std::false_type {};
@@ -165,17 +150,34 @@ namespace JsonReflect {
 			decltype(std::declval<const T&>() != std::declval<const T&>())
 			>> : std::true_type {};
 
-		template <typename T, typename Alloc>
-		struct is_inequality_comparable<std::vector<T, Alloc>> : is_inequality_comparable<T> {};
+		// std::vector: only comparable if element type is
+        template <typename T, typename Alloc>
+        struct is_equality_comparable<std::vector<T, Alloc>> : is_equality_comparable<T> {};
+        template <typename T, typename Alloc>
+        struct is_inequality_comparable<std::vector<T, Alloc>> : is_inequality_comparable<T> {};
 
-		template <typename... Ts>
-		struct is_inequality_comparable<std::variant<Ts...>> : std::conjunction<is_inequality_comparable<Ts>...> {};
+        // std::variant: only comparable if ALL alternatives are
+        template <typename... Ts>
+        struct is_equality_comparable<std::variant<Ts...>> : std::conjunction<is_equality_comparable<Ts>...> {};
+        template <typename... Ts>
+        struct is_inequality_comparable<std::variant<Ts...>> : std::conjunction<is_inequality_comparable<Ts>...> {};
 
-		template <typename T>
-		struct is_inequality_comparable<std::optional<T>> : is_inequality_comparable<T> {};
+        // std::optional: only comparable if value type is
+        template <typename T>
+        struct is_equality_comparable<std::optional<T>> : is_equality_comparable<T> {};
+        template <typename T>
+        struct is_inequality_comparable<std::optional<T>> : is_inequality_comparable<T> {};
 
-		template<typename T>
-		constexpr bool is_inequality_comparable_v = is_inequality_comparable<T>::value;
+		// std::array: only comparable if element type is
+        template <typename T, std::size_t N>
+        struct is_equality_comparable<std::array<T, N>> : is_equality_comparable<T> {};
+        template <typename T, std::size_t N>
+        struct is_inequality_comparable<std::array<T, N>> : is_inequality_comparable<T> {};
+
+        template <typename T>
+        constexpr bool is_equality_comparable_v = is_equality_comparable<T>::value;
+        template <typename T>
+        constexpr bool is_inequality_comparable_v = is_inequality_comparable<T>::value;
 
 		template <typename T, typename... Args>
 		static json to_json_visitable(const T& value, Args&&... args) {
