@@ -5,7 +5,7 @@
 // Made as self-study project at Breda University of Applied Sciences
 // https://github.com/Sven-vh/JsonReflect
 //
-// Generated: 2026-02-04 16:45:05
+// Generated: 2026-02-27 13:26:37
 // ============================================================================
 //
 // MIT License
@@ -27910,11 +27910,27 @@ namespace JsonReflect::Detail {
 // Begin: JsonReflect_entry.hpp
 // ----------------------------------------------------------------------------
 
+/* Configuration */
+
+/* Whether to use a static instance when comparing for delta (using static causes less allocations) */
+/* See Detail::to_json_visitable for usage */
+#ifndef JSON_REFLECT_STATIC_FOR_DELTA
+#define JSON_REFLECT_STATIC_FOR_DELTA 1
+#endif
+
+/* Whether to allow json compare when calculating delta (serializes object twice and compares, can be more expensive) */
+/* See Detail::to_json_visitable for usage */
+#ifndef JSON_REFLECT_ALLOW_JSON_COMPARE
+#define JSON_REFLECT_ALLOW_JSON_COMPARE 1
+#endif
+
 /* Disable implicit nlohmann conversion */
 /* this is to avoid confusion with templates that are exidently converted to json objects */
 #ifndef JSON_USE_IMPLICIT_CONVERSIONS
 #define JSON_USE_IMPLICIT_CONVERSIONS 0
 #endif
+#include <variant>
+
 #define JSON_REFLECT(T, ...) \
 VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::serialize_lib_t, T, __VA_ARGS__);\
 VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::deserialize_lib_t, T, __VA_ARGS__);\
@@ -27948,22 +27964,35 @@ namespace JsonReflect {
 
 	/* Forward declare */
 	template <typename T, typename... Args>
-    static json to_json(const T& value, Args&&... args);
+	static json to_json(const T& value, Args&&... args);
 
 	template <typename T, typename... Args>
-    static void from_json(const json& j, T& value, Args&&... args);
+	static void from_json(const json& j, T& value, Args&&... args);
 
 	namespace Detail {
 		template<typename T, typename CONTEXT> /* Has a visitable struct implementation */
 		constexpr bool is_visitable_v = visit_struct::traits::is_visitable<T, CONTEXT>::value;
 
+		/* Whether or not a type should only serialize it's changes */
+		template<typename T>
+		struct delta_serialize : std::false_type {};
+
+		template<typename T>
+		struct delta_default {
+			/* Default, assumse default-constructible */
+			static T make() {
+				static_assert(std::is_default_constructible_v<T>, "JsonReflect: T is not default-constructible. Implement/specialize delta_default<T> to provide a baseline instance.");
+				return T{};
+			}
+		};
+
 		/* Check if type can be serialized */
 		template <typename T, typename... Args>
 		inline constexpr bool has_to_json_v =
 			svh::is_tag_invocable_v<serialize_t, const T&, Args...> ||			/* WITH arguments */
-            svh::is_tag_invocable_v<serialize_t, const T&> ||					/* WITHOUT arguments */
+			svh::is_tag_invocable_v<serialize_t, const T&> ||					/* WITHOUT arguments */
 			svh::is_tag_invocable_v<serialize_lib_t, const T&, Args...> ||		/* WITH arguments */
-            svh::is_tag_invocable_v<serialize_lib_t, const T&> ||				/* WITHOUT arguments */
+			svh::is_tag_invocable_v<serialize_lib_t, const T&> ||				/* WITHOUT arguments */
 			svh::is_tag_invocable_v<serialize_default_t, const T&, Args...> ||	/* WITH arguments */
 			svh::is_tag_invocable_v<serialize_default_t, const T&> ||			/* WITHOUT arguments */
 			is_visitable_v<T, serialize_lib_t>;
@@ -28002,14 +28031,98 @@ namespace JsonReflect {
 			!has_custom_to_json_v<uncvref_t<T>> &&
 			!has_custom_from_json_v<uncvref_t<T>>;
 
+		/* == */
+		template<typename T, typename = void>
+		struct is_equality_comparable : std::false_type {};
+
+		template<typename T>
+		struct is_equality_comparable<T, std::void_t<
+			decltype(std::declval<const T&>() == std::declval<const T&>())
+			>> : std::true_type {};
+
+		/* != */
+		template<typename T, typename = void>
+		struct is_inequality_comparable : std::false_type {};
+
+		template<typename T>
+		struct is_inequality_comparable<T, std::void_t<
+			decltype(std::declval<const T&>() != std::declval<const T&>())
+			>> : std::true_type {};
+
+		// std::vector: only comparable if element type is
+		template <typename T, typename Alloc>
+		struct is_equality_comparable<std::vector<T, Alloc>> : is_equality_comparable<T> {};
+		template <typename T, typename Alloc>
+		struct is_inequality_comparable<std::vector<T, Alloc>> : is_inequality_comparable<T> {};
+
+		// std::variant: only comparable if ALL alternatives are
+		template <typename... Ts>
+		struct is_equality_comparable<std::variant<Ts...>> : std::conjunction<is_equality_comparable<Ts>...> {};
+		template <typename... Ts>
+		struct is_inequality_comparable<std::variant<Ts...>> : std::conjunction<is_inequality_comparable<Ts>...> {};
+
+		// std::optional: only comparable if value type is
+		template <typename T>
+		struct is_equality_comparable<std::optional<T>> : is_equality_comparable<T> {};
+		template <typename T>
+		struct is_inequality_comparable<std::optional<T>> : is_inequality_comparable<T> {};
+
+		// std::array: only comparable if element type is
+		template <typename T, std::size_t N>
+		struct is_equality_comparable<std::array<T, N>> : is_equality_comparable<T> {};
+		template <typename T, std::size_t N>
+		struct is_inequality_comparable<std::array<T, N>> : is_inequality_comparable<T> {};
+
+		template <typename T>
+		constexpr bool is_equality_comparable_v = is_equality_comparable<T>::value;
+		template <typename T>
+		constexpr bool is_inequality_comparable_v = is_inequality_comparable<T>::value;
+
 		template <typename T, typename... Args>
 		static json to_json_visitable(const T& value, Args&&... args) {
 			json j;
-			visit_struct::context<serialize_lib_t>::for_each(value, [&](const char* name, const auto& field) {
+
+			constexpr bool delta_serialize_v = delta_serialize<T>::value;
+			if constexpr (delta_serialize_v) {
+				/* Delta serialize, only save member variables changed */
+#if JSON_REFLECT_STATIC_FOR_DELTA
+				static T compare = delta_default<T>::make();
+#else
+				const T compare = delta_default<T>::make();
+#endif
+				visit_struct::context<serialize_lib_t>::for_each(value, compare, [&](const char* name, const auto& field_value, const auto& field_compare) {
+					using Field_T = std::decay_t<decltype(field_value)>;
+					if constexpr (is_equality_comparable_v<Field_T>) {
+						if (field_value == field_compare) return;
+						j[name] = to_json(field_value, std::forward<Args>(args)...);
+					} else if constexpr (is_inequality_comparable_v<Field_T>) {
+						if (field_value != field_compare)
+							j[name] = to_json(field_value, std::forward<Args>(args)...);
+					} else {
+#if JSON_REFLECT_ALLOW_JSON_COMPARE
+						/* ! EXPENSIVE ! */
+						/* No equality operator, serialize both and compare json */
+						auto field_json = to_json(field_value, std::forward<Args>(args)...);
+						auto compare_json = to_json(field_compare, std::forward<Args>(args)...);
+						if (field_json != compare_json) {
+							j[name] = std::move(field_json);
+							return;
+						} else {
+							return; /* No change, skip */
+						}
+#else
+						static_assert(svh::always_false<Field_T>::value, "JsonSerializer Error: Type T is set to delta serialize but has no equality operator, inequality operator and macro JSON_REFLECT_ALLOW_JSON_COMPARE is disabled.");
+#endif
+					}
+					});
+			} else {
+				/* Default serialize */
+				visit_struct::context<serialize_lib_t>::for_each(value, [&](const char* name, const auto& field) {
 					j[name] = to_json(field, std::forward<Args>(args)...);
-				});
+					});
+			}
 			return j;
-        }
+		}
 
 		template <typename T, typename... Args>
 		static void from_json_visitable(const json& j, T& value, Args&&... args) {
@@ -28018,36 +28131,32 @@ namespace JsonReflect {
 				if (it != j.end()) {
 					from_json(it.value(), field, std::forward<Args>(args)...);
 				}
-			});
-        }
+				});
+		}
 	}
 
 	template<typename T, typename... Args>
 	static json to_json(const T& value, Args&&... args) {
 		/* 1) Check for user defined serialize funciton */
-        if constexpr (svh::is_tag_invocable_v<serialize_t, const T&, Args...>) { /* WITH arguments */
+		if constexpr (svh::is_tag_invocable_v<serialize_t, const T&, Args...>) { /* WITH arguments */
 			return tag_invoke(serialize, value, std::forward<Args>(args)...);
-        } else if constexpr (svh::is_tag_invocable_v<serialize_t, const T&>) { /* WITHOUT arguments */
-            return tag_invoke(serialize, value);
-        }
+		} else if constexpr (svh::is_tag_invocable_v<serialize_t, const T&>) { /* WITHOUT arguments */
+			return tag_invoke(serialize, value);
+		}
 		/* 2) Check if type is reflected */
 		else if constexpr (Detail::is_visitable_v<T, serialize_lib_t>) {
-            return Detail::to_json_visitable(value, std::forward<Args>(args)...);
+			return Detail::to_json_visitable(value, std::forward<Args>(args)...);
 		}
 		/* 3) Check for library defined serialize function */
-        else if constexpr (svh::is_tag_invocable_v<serialize_lib_t, const T&, Args...>) { /* WITH arguments */
+		else if constexpr (svh::is_tag_invocable_v<serialize_lib_t, const T&, Args...>) { /* WITH arguments */
 			return tag_invoke(serialize_lib, value, std::forward<Args>(args)...);
-		}
-		else if constexpr (svh::is_tag_invocable_v<serialize_lib_t, const T&>) { /* WITHOUT arguments */
+		} else if constexpr (svh::is_tag_invocable_v<serialize_lib_t, const T&>) { /* WITHOUT arguments */
 			return tag_invoke(serialize_lib, value);
-        }
+		}
 		/* 4) Check for nlohmann default serialize function */
-        else if constexpr (svh::is_tag_invocable_v<serialize_default_t, const T&, Args...>) { /* WITH arguments */
+		else if constexpr (svh::is_tag_invocable_v<serialize_default_t, const T&, Args...>) {
 			return tag_invoke(serialize_default, value, std::forward<Args>(args)...);
 		}
-		else if constexpr (svh::is_tag_invocable_v<serialize_default_t, const T&>) { /* WITHOUT arguments */
-			return tag_invoke(serialize_default, value);
-        }
 		/* 5) No suitable serialize implementation found, compile assert */
 		else {
 			static_assert(svh::always_false<T>::value, "JsonSerializer Error: No suitable serialize implementation found for type T");
@@ -28063,23 +28172,21 @@ namespace JsonReflect {
 			return tag_invoke(deserialize, j, value, std::forward<Args>(args)...);
 		} else if constexpr (svh::is_tag_invocable_v<deserialize_t, const json&, T&>) { /* WITHOUT arguments */
 			return tag_invoke(deserialize, j, value);
-        }
+		}
 		/* 2) Check if type is reflected */
 		else if constexpr (Detail::is_visitable_v<T, deserialize_lib_t>) {
-            return Detail::from_json_visitable(j, value, std::forward<Args>(args)...);
+			return Detail::from_json_visitable(j, value, std::forward<Args>(args)...);
 		}
 		/* 3) Check for library defined deserialize function */
-        else if constexpr (svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&, Args...>) { /* WITH arguments */
+		else if constexpr (svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&, Args...>) { /* WITH arguments */
 			return tag_invoke(deserialize_lib, j, value, std::forward<Args>(args)...);
-        } else if constexpr (svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&>) { /* WITHOUT arguments */
+		} else if constexpr (svh::is_tag_invocable_v<deserialize_lib_t, const json&, T&>) { /* WITHOUT arguments */
 			return tag_invoke(deserialize_lib, j, value);
-        }
+		}
 		/* 4) Check for nlohmann default deserialize function */
-        else if constexpr (svh::is_tag_invocable_v<deserialize_default_t, const json&, T&, Args...>) { /* WITH arguments */
+		else if constexpr (svh::is_tag_invocable_v<deserialize_default_t, const json&, T&, Args...>) {
 			return tag_invoke(deserialize_default, j, value, std::forward<Args>(args)...);
-		} else if constexpr (svh::is_tag_invocable_v<deserialize_default_t, const json&, T&>) { /* WITHOUT arguments */
-			return tag_invoke(deserialize_default, j, value);
-        }
+		}
 		/* 5) No suitable deserialize implementation found, compile assert */
 		else {
 			static_assert(svh::always_false<T>::value, "JsonSerializer Error: No suitable deserialize implementation found for type T");
@@ -28132,20 +28239,27 @@ namespace JsonReflect {
 // ----------------------------------------------------------------------------
 
 #include <type_traits>
+#include <utility>
+
 namespace JsonReflect {
 
 	/* [ Serialize ] nlohmann defaults */
 	/* Includes most of std types and primitives */
-	template<typename T>
-	std::enable_if_t<Detail::is_json_compatible_v<T>, json> tag_invoke(serialize_default_t, const T& value) {
+	template<typename T, typename... Args>
+	std::enable_if_t<Detail::is_json_compatible_v<T>, json> tag_invoke(serialize_default_t, const T& value, Args&&... args) {
+		/* Lose args */
+		/* If you know a way to fix this, let me know by making issue/PR */
 		return json(value);
 	}
 
 	/* [ Deserialize ] nlohmann defaults */
 	/* Includes most of std types and primitives */
-	template<typename T>
-	std::enable_if_t<Detail::is_json_compatible_v<T>, void> tag_invoke(deserialize_default_t, const json& j, T& value) {
-		value = j.get<T>();
+	template<typename T, typename... Args>
+	std::enable_if_t<Detail::is_json_compatible_v<T>, void> tag_invoke(deserialize_default_t, const json& j, T& value, Args&&... args) {
+		/* Lose args */
+		/* If you know a way to fix this, let me know by making issue/PR */
+		j.get_to(value);
+		//value = j.get<T>();
 	}
 
 	/* [ Serialize ] Json type */
@@ -28225,6 +28339,8 @@ static_assert(svh::is_tag_invocable_v<JsonReflect::deserialize_default_t, const 
 
 #include <type_traits>
 #include <variant>
+#include <string>
+#include <filesystem>
 
 namespace JsonReflect {
 
@@ -28247,6 +28363,19 @@ namespace JsonReflect {
 
 		template<typename T>
 		constexpr bool is_weak_pointer_v = is_weak_pointer_impl<std::remove_cv_t<T>>::value;
+
+		// Detect associative containers (map, unordered_map, multimap, etc.)
+		template<typename T, typename = void>
+		struct is_associative_container : std::false_type {};
+
+		template<typename T>
+		struct is_associative_container<T, std::void_t<
+			typename T::key_type,
+			typename T::mapped_type
+			>> : std::true_type {};
+
+		template<typename T>
+		inline constexpr bool is_associative_container_v = is_associative_container<T>::value;
 
 		template<typename T>
 		struct smart_pointer_factory {
@@ -28286,8 +28415,8 @@ namespace JsonReflect {
 		}
 
 		// Helper to deserialize variant at runtime index
-        template <std::size_t I = 0, typename... Types, typename... Args>
-        void deserialize_variant_at_index(std::size_t index, const json& j, std::variant<Types...>& value, Args... args) {
+		template <std::size_t I = 0, typename... Types, typename... Args>
+		void deserialize_variant_at_index(std::size_t index, const json& j, std::variant<Types...>& value, Args... args) {
 			if constexpr (I < sizeof...(Types)) {
 				if (I == index) {
 					using T = std::variant_alternative_t<I, std::variant<Types...>>;
@@ -28304,7 +28433,117 @@ namespace JsonReflect {
 				);
 			}
 		}
+
+		template<typename T, typename = void>
+		struct is_container : std::false_type {};
+
+		template<typename T>
+		inline constexpr bool is_string_v =
+			std::is_same_v<T, std::string> ||
+			std::is_same_v<T, std::wstring> ||
+			std::is_same_v<T, std::string_view> ||
+			std::is_same_v<T, std::wstring_view> ||
+			std::is_same_v<T, std::filesystem::path>;
+
+		template<typename T>
+		struct is_container<T, std::void_t<
+			decltype(std::declval<T>().begin()),
+			decltype(std::declval<T>().end()),
+			typename T::value_type>
+		> : std::bool_constant<!is_string_v<T>> {
+		};
+
+		template<typename T>
+		inline constexpr bool is_container_v = is_container<T>::value;
 	}
+
+	/* [ Serialize ] Any container with arguments */
+	template<typename Container, typename... Args>
+	std::enable_if_t<
+		Detail::is_container_v<Container>
+		&& (sizeof...(Args) > 0),
+		json>
+		tag_invoke(serialize_lib_t, const Container& container, Args&&... args) {
+		json j = json::array();
+		for (const auto& element : container) {
+			j.push_back(to_json(element, std::forward<Args>(args)...));
+		}
+		return j;
+	}
+
+	/* [ Deserialize ] Any container with arguments */
+	template<typename Container, typename... Args>
+	std::enable_if_t<
+		Detail::is_container_v<Container>
+		&& (sizeof...(Args) > 0),
+		void
+		>
+		tag_invoke(deserialize_lib_t, const json& j, Container& container, Args&&... args) {
+        container.clear();
+
+        if constexpr (Detail::is_associative_container_v<Container>) {
+            // For maps: JSON is an object {"key": value}
+            for (const auto& [key_str, value_json] : j.items()) {
+                using key_type = typename Container::key_type;
+                using mapped_type = typename Container::mapped_type;
+
+                // Handle key conversion from JSON string
+                key_type key;
+                if constexpr (std::is_same_v<key_type, std::string>) {
+                    // String keys: use directly
+                    key = key_str;
+                } else if constexpr (std::is_arithmetic_v<key_type>) {
+                    // Numeric keys: parse from string
+                    if constexpr (std::is_integral_v<key_type>) {
+                        if constexpr (std::is_unsigned_v<key_type>) {
+                            key = static_cast<key_type>(std::stoull(key_str));
+                        } else {
+                            key = static_cast<key_type>(std::stoll(key_str));
+                        }
+                    } else {
+                        key = static_cast<key_type>(std::stod(key_str));
+                    }
+                } else {
+                    // Complex keys: deserialize from JSON string representation
+                    json key_json = json::parse(key_str);
+                    from_json(key_json, key, std::forward<Args>(args)...);
+                }
+
+                // Deserialize the value
+                mapped_type value;
+                from_json(value_json, value, std::forward<Args>(args)...);
+
+                container.emplace(std::move(key), std::move(value));
+            }
+        } else {
+            // For vectors/lists/etc: JSON is an array
+            for (const auto& element_json : j) {
+                typename Container::value_type element;
+                from_json(element_json, element, std::forward<Args>(args)...);
+                container.insert(container.end(), std::move(element));
+            }
+        }
+	}
+
+	/* [ Deserialize ] std::array - fixed size, no clear/insert */
+    template <typename T, std::size_t N, typename... Args>
+    std::enable_if_t<(sizeof...(Args) > 0), void> 
+		tag_invoke(deserialize_lib_t, const json& j, std::array<T, N>& container, Args&&... args) {
+        for (std::size_t i = 0; i < N && i < j.size(); ++i) {
+            from_json(j[i], container[i], std::forward<Args>(args)...);
+        }
+    }
+
+    /* [ Serialize ] std::array - same as container but explicit */
+    template <typename T, std::size_t N, typename... Args>
+    std::enable_if_t<(sizeof...(Args) > 0), json> 
+		tag_invoke(serialize_lib_t, const std::array<T, N>& container, Args&&... args) {
+        json j = json::array();
+        for (const auto& element : container) {
+            j.push_back(to_json(element, std::forward<Args>(args)...));
+        }
+        return j;
+    }
 
 	/* [ Serialize ] Smart Pointers, shared & unique */
 	template<typename T>
@@ -28345,7 +28584,7 @@ namespace JsonReflect {
 	/* [ Serialize ] Weak Pointers */
 	template<typename T>
 	std::enable_if_t<Detail::is_weak_pointer_v<T>, json>
-		tag_invoke(serialize_default_t, const T& value) {
+		tag_invoke(serialize_lib_t, const T& value) {
 		auto shared_ptr = value.lock();
 		if (shared_ptr) {
 			return JsonReflect::to_json(*shared_ptr);
@@ -28356,14 +28595,14 @@ namespace JsonReflect {
 	/* [ Deserialize ] Weak Pointers - Not supported */
 	template<typename T>
 	std::enable_if_t<Detail::is_weak_pointer_v<T>, void>
-		tag_invoke(deserialize_default_t, const json& j, T& value) {
+		tag_invoke(deserialize_lib_t, const json& j, T& value) {
 		//static_assert(std::false_type::value, "JsonReflect Error: Deserialization of weak_ptr is not supported.");
 		throw std::runtime_error("JsonReflect Error: Deserialization of weak_ptr is not supported.");
 	}
 
 	/* [ Serialize ] std::variant */
-    template <typename... Types, typename... Args>
-	json tag_invoke(serialize_default_t, const std::variant<Types...>& value, Args... args) {
+	template <typename... Types, typename... Args>
+    json tag_invoke(serialize_lib_t, const std::variant<Types...>& value, Args... args) {
 		json result;
 		result["index"] = value.index();
 		std::visit([&result, &args...](const auto& v) {
@@ -28373,8 +28612,8 @@ namespace JsonReflect {
 	}
 
 	/* [ Deserialize ] std::variant */
-    template <typename... Types, typename... Args>
-    void tag_invoke(deserialize_default_t, const json& j, std::variant<Types...>& value, Args... args) {
+	template <typename... Types, typename... Args>
+    void tag_invoke(deserialize_lib_t, const json& j, std::variant<Types...>& value, Args... args) {
 		if (!j.is_object()) {
 			throw std::runtime_error("JsonReflect Error: Expected JSON object for std::variant deserialization");
 		}
