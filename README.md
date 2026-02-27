@@ -176,7 +176,7 @@ If no implementation is found:
 
 ## Delta Serialization
 
-Delta serialization is a feature that allows you to serialize only the changes made to an object since the last serialization. This can be useful for smaller JSON files.
+Delta serialization is a feature that allows you to serialize only the changes made to an object. This can be useful for smaller JSON files. Delta serialization is opt-in only, meaning you have to specify if a type needs to support it:
 
 ```cpp
 struct MyStruct {
@@ -206,14 +206,36 @@ json j = JsonReflect::to_json(input);
 }
 ```
 
+By default, delta serialization only works on **default-constructible types**. If your type is not default-constructible, you can specialize the ``delta_default`` type trait that gets used to compare against:
+
+```cpp
+struct NonDefaultConstructible {
+	int a;
+	float b;
+	bool c;
+    NonDefaultConstructible(int a, float b, bool c) : a(a), b(b), c(c) {}
+};
+JSON_REFLECT(a, b, c);
+
+template<>
+struct JsonReflect::Detail::delta_serialize<NonDefaultConstructible> : std::true_type {};
+
+template<>
+struct JsonReflect::Detail::delta_default<NonDefaultConstructible> {
+	static NonDefaultConstructible make() {
+		return NonDefaultConstructible{ 0, 0.0f, true };
+	}
+};
+```
+
 > [!IMPORTANT]
-> Delta serialization only works on default-constructible types. By default, it uses the ``==`` and ``!=`` operators on the member variables to detect changes. If these are not present for a type, it uses a fallback mechanism that may not be as efficient. (See ``JsonReflect::Detail::to_json_visitable`` in ``JsonReflect_entry.hpp``)
+> It uses the ``==`` and ``!=`` operators on the member variables to detect changes. If these are not present for a type, it uses a fallback mechanism that may not be as efficient.
 
 ## Macros
 
-**``JSON_REFLECT_STATIC_FOR_DELTA``**: Whether to use a static instance when comparing for delta (using static causes less allocations but keeps it alive)
+**``JSON_REFLECT_STATIC_FOR_DELTA``**: (default: 1) Whether to use a static instance when comparing for delta (using static causes less allocations but keeps it alive)
 
-**``JSON_REFLECT_ALLOW_JSON_COMPARE``**: Whether to allow JSON compare when calculating delta (serializes object twice and compares, can be more expensive)
+**``JSON_REFLECT_ALLOW_JSON_COMPARE``**: (default: 1) Whether to allow JSON compare when calculating delta (serializes object twice and compares, can be more expensive)
 
 ## Dependencies
 
