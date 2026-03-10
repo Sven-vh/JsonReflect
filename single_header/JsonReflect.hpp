@@ -5,7 +5,7 @@
 // Made as self-study project at Breda University of Applied Sciences
 // https://github.com/Sven-vh/JsonReflect
 //
-// Generated: 2026-02-27 13:26:37
+// Generated: 2026-03-10 10:07:28
 // ============================================================================
 //
 // MIT License
@@ -28078,7 +28078,7 @@ namespace JsonReflect {
 		template <typename T>
 		constexpr bool is_inequality_comparable_v = is_inequality_comparable<T>::value;
 
-		template <typename T, typename... Args>
+		template <typename Tag = serialize_lib_t, typename T, typename... Args>
 		static json to_json_visitable(const T& value, Args&&... args) {
 			json j;
 
@@ -28090,7 +28090,7 @@ namespace JsonReflect {
 #else
 				const T compare = delta_default<T>::make();
 #endif
-				visit_struct::context<serialize_lib_t>::for_each(value, compare, [&](const char* name, const auto& field_value, const auto& field_compare) {
+				visit_struct::context<Tag>::for_each(value, compare, [&](const char* name, const auto& field_value, const auto& field_compare) {
 					using Field_T = std::decay_t<decltype(field_value)>;
 					if constexpr (is_equality_comparable_v<Field_T>) {
 						if (field_value == field_compare) return;
@@ -28117,16 +28117,16 @@ namespace JsonReflect {
 					});
 			} else {
 				/* Default serialize */
-				visit_struct::context<serialize_lib_t>::for_each(value, [&](const char* name, const auto& field) {
+				visit_struct::context<Tag>::for_each(value, [&](const char* name, const auto& field) {
 					j[name] = to_json(field, std::forward<Args>(args)...);
 					});
 			}
 			return j;
 		}
 
-		template <typename T, typename... Args>
+		template <typename Tag = typename deserialize_lib_t, typename T, typename... Args>
 		static void from_json_visitable(const json& j, T& value, Args&&... args) {
-			visit_struct::context<deserialize_lib_t>::for_each(value, [&](const char* name, auto& field) {
+			visit_struct::context<Tag>::for_each(value, [&](const char* name, auto& field) {
 				auto it = j.find(name);
 				if (it != j.end()) {
 					from_json(it.value(), field, std::forward<Args>(args)...);
