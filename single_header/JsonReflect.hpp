@@ -5,7 +5,7 @@
 // Made as self-study project at Breda University of Applied Sciences
 // https://github.com/Sven-vh/JsonReflect
 //
-// Generated: 2026-03-11 12:17:38
+// Generated: 2026-03-11 12:20:28
 // ============================================================================
 //
 // MIT License
@@ -28246,7 +28246,7 @@ namespace JsonReflect {
 	/* [ Serialize ] nlohmann defaults */
 	/* Includes most of std types and primitives */
 	template<typename T, typename... Args>
-	std::enable_if_t<Detail::is_json_compatible_v<T>, json> tag_invoke(serialize_default_t, const T& value, Args&&... args) {
+	std::enable_if_t<Detail::is_json_compatible_v<T>, json> tag_invoke(serialize_default_t, const T& value, Args&&...) {
 		/* Lose args */
 		/* If you know a way to fix this, let me know by making issue/PR */
 		return json(value);
@@ -28255,7 +28255,7 @@ namespace JsonReflect {
 	/* [ Deserialize ] nlohmann defaults */
 	/* Includes most of std types and primitives */
 	template<typename T, typename... Args>
-	std::enable_if_t<Detail::is_json_compatible_v<T>, void> tag_invoke(deserialize_default_t, const json& j, T& value, Args&&... args) {
+	std::enable_if_t<Detail::is_json_compatible_v<T>, void> tag_invoke(deserialize_default_t, const json& j, T& value, Args&&...) {
 		/* Lose args */
 		/* If you know a way to fix this, let me know by making issue/PR */
 		j.get_to(value);
