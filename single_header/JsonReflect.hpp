@@ -5,7 +5,7 @@
 // Made as self-study project at Breda University of Applied Sciences
 // https://github.com/Sven-vh/JsonReflect
 //
-// Generated: 2026-03-11 12:20:28
+// Generated: 2026-03-11 12:50:14
 // ============================================================================
 //
 // MIT License
@@ -28416,7 +28416,7 @@ namespace JsonReflect {
 
 		// Helper to deserialize variant at runtime index
 		template <std::size_t I = 0, typename... Types, typename... Args>
-		void deserialize_variant_at_index(std::size_t index, const json& j, std::variant<Types...>& value, Args... args) {
+		void deserialize_variant_at_index(std::size_t index, const json& j, std::variant<Types...>& value, [[maybe_unused]] Args... args) {
 			if constexpr (I < sizeof...(Types)) {
 				if (I == index) {
 					using T = std::variant_alternative_t<I, std::variant<Types...>>;
