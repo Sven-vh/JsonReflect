@@ -5,7 +5,7 @@
 // Made as self-study project at Breda University of Applied Sciences
 // https://github.com/Sven-vh/JsonReflect
 //
-// Generated: 2026-03-10 10:07:28
+// Generated: 2026-03-11 12:17:38
 // ============================================================================
 //
 // MIT License
@@ -28136,7 +28136,7 @@ namespace JsonReflect {
 	}
 
 	template<typename T, typename... Args>
-	static json to_json(const T& value, Args&&... args) {
+	static json to_json(const T& value, [[maybe_unused]] Args&&... args) {
 		/* 1) Check for user defined serialize funciton */
 		if constexpr (svh::is_tag_invocable_v<serialize_t, const T&, Args...>) { /* WITH arguments */
 			return tag_invoke(serialize, value, std::forward<Args>(args)...);
@@ -28165,7 +28165,7 @@ namespace JsonReflect {
 	}
 
 	template<typename T, typename... Args>
-	static void from_json(const json& j, T& value, Args&&... args) {
+	static void from_json(const json& j, T& value, [[maybe_unused]] Args&&... args) {
 		static_assert(std::is_const_v<T> == false, "JsonSerializer Error: Cannot deserialize a const object of type T");
 		/* 1) Check for user defined deserialize funciton */
 		if constexpr (svh::is_tag_invocable_v<deserialize_t, const json&, T&, Args...>) { /* WITH arguments */
