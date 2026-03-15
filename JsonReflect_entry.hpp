@@ -174,6 +174,22 @@ namespace JsonReflect {
 		template <typename T, std::size_t N>
 		struct is_inequality_comparable<std::array<T, N>> : is_inequality_comparable<T> {};
 
+		// std::pair: only comparable if both types are
+        template <typename T1, typename T2>
+        struct is_equality_comparable<std::pair<T1, T2>> : std::conjunction<is_equality_comparable<T1>, is_equality_comparable<T2>> {};
+        template <typename T1, typename T2>
+        struct is_inequality_comparable<std::pair<T1, T2>> : std::conjunction<is_inequality_comparable<T1>, is_inequality_comparable<T2>> {};
+
+		// std::map and std::unordered_map: only comparable if key and value types are
+        template <typename Key, typename T, typename Compare, typename Alloc>
+        struct is_equality_comparable<std::map<Key, T, Compare, Alloc>> : std::conjunction<is_equality_comparable<Key>, is_equality_comparable<T>> {};
+        template <typename Key, typename T, typename Compare, typename Alloc>
+        struct is_inequality_comparable<std::map<Key, T, Compare, Alloc>> : std::conjunction<is_inequality_comparable<Key>, is_inequality_comparable<T>> {};
+        template <typename Key, typename T, typename Hash, typename KeyEqual, typename Alloc>
+        struct is_equality_comparable<std::unordered_map<Key, T, Hash, KeyEqual, Alloc>> : std::conjunction<is_equality_comparable<Key>, is_equality_comparable<T>> {};
+        template <typename Key, typename T, typename Hash, typename KeyEqual, typename Alloc>
+        struct is_inequality_comparable<std::unordered_map<Key, T, Hash, KeyEqual, Alloc>> : std::conjunction<is_inequality_comparable<Key>, is_inequality_comparable<T>> {};
+
 		template <typename T>
 		constexpr bool is_equality_comparable_v = is_equality_comparable<T>::value;
 		template <typename T>
