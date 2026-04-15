@@ -37,6 +37,11 @@ VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::serialize_lib_t, T, __VA_ARGS__);\
 VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::deserialize_lib_t, T, __VA_ARGS__);\
 VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::compare_lib_t, T, __VA_ARGS__)
 
+#define JSON_REFLECT_TEMPLATE(TPARAMS, T, TARGS, ...) \
+VISITABLE_TEMPLATE_STRUCT_IN_CONTEXT(JsonReflect::serialize_lib_t, TPARAMS, T, TARGS, __VA_ARGS__);\
+VISITABLE_TEMPLATE_STRUCT_IN_CONTEXT(JsonReflect::deserialize_lib_t, TPARAMS, T, TARGS, __VA_ARGS__);\
+VISITABLE_TEMPLATE_STRUCT_IN_CONTEXT(JsonReflect::compare_lib_t, TPARAMS, T, TARGS, __VA_ARGS__);
+
 /* Needs to be defined outside of any namespaces */
 struct json_reflect_global_tag {};
 
