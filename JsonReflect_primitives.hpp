@@ -11,6 +11,11 @@
 #include "JsonReflect_helpers.hpp"
 #include <magic_enum/magic_enum.hpp>
 #include <utility>
+#include <iostream>
+
+#ifndef JSON_RELFECT_ALLOW_THROW
+#define JSON_RELFECT_ALLOW_THROW 1
+#endif
 
 namespace JsonReflect {
 
@@ -61,7 +66,11 @@ namespace JsonReflect {
 		if (enum_value.has_value()) {
 			value = enum_value.value();
 		} else {
+#if JSON_RELFECT_ALLOW_THROW
 			throw std::runtime_error("JsonReflect Error: Invalid enum name '" + name + "' for enum type");
+#else
+			std::cerr << "JsonReflect Warning: Invalid enum name '" << name << "' for enum type. Value will be default initialized." << std::endl;
+#endif
 		}
 	}
 }
