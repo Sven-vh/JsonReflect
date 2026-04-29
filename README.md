@@ -1,5 +1,6 @@
-<img width="1251" height="526" alt="JsonReflect" src="https://github.com/user-attachments/assets/56c14418-c899-42d8-98be-3f72f7a72349" />
-
+<picture>
+	<img alt="JsonReflect" src="https://github.com/user-attachments/assets/56c14418-c899-42d8-98be-3f72f7a72349" />
+</picture>
 
 ---
 
