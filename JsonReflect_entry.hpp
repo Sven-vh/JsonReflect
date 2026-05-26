@@ -21,6 +21,16 @@
 #define JSON_REFLECT_ALLOW_JSON_COMPARE 1
 #endif
 
+/* Whether to auto-initialize smart pointers during deserialization (if null, will be initialized with default constructor) */
+#ifndef JSON_REFLECT_INITIALIZE_SMART_POINTERS
+#define JSON_REFLECT_INITIALIZE_SMART_POINTERS 1
+#endif
+
+/* Whether to allow throwing exceptions from JsonReflect (if disabled, will return null json or do nothing on error instead) */
+#ifndef JSON_REFLECT_ALLOW_THROW
+#define JSON_REFLECT_ALLOW_THROW 1
+#endif
+
 /* Disable implicit nlohmann conversion */
 /* this is to avoid confusion with templates that are exidently converted to json objects */
 #ifndef JSON_USE_IMPLICIT_CONVERSIONS
@@ -180,20 +190,20 @@ namespace JsonReflect {
 		struct is_inequality_comparable<std::array<T, N>> : is_inequality_comparable<T> {};
 
 		// std::pair: only comparable if both types are
-        template <typename T1, typename T2>
-        struct is_equality_comparable<std::pair<T1, T2>> : std::conjunction<is_equality_comparable<T1>, is_equality_comparable<T2>> {};
-        template <typename T1, typename T2>
-        struct is_inequality_comparable<std::pair<T1, T2>> : std::conjunction<is_inequality_comparable<T1>, is_inequality_comparable<T2>> {};
+		template <typename T1, typename T2>
+		struct is_equality_comparable<std::pair<T1, T2>> : std::conjunction<is_equality_comparable<T1>, is_equality_comparable<T2>> {};
+		template <typename T1, typename T2>
+		struct is_inequality_comparable<std::pair<T1, T2>> : std::conjunction<is_inequality_comparable<T1>, is_inequality_comparable<T2>> {};
 
 		// std::map and std::unordered_map: only comparable if key and value types are
-        template <typename Key, typename T, typename Compare, typename Alloc>
-        struct is_equality_comparable<std::map<Key, T, Compare, Alloc>> : std::conjunction<is_equality_comparable<Key>, is_equality_comparable<T>> {};
-        template <typename Key, typename T, typename Compare, typename Alloc>
-        struct is_inequality_comparable<std::map<Key, T, Compare, Alloc>> : std::conjunction<is_inequality_comparable<Key>, is_inequality_comparable<T>> {};
-        template <typename Key, typename T, typename Hash, typename KeyEqual, typename Alloc>
-        struct is_equality_comparable<std::unordered_map<Key, T, Hash, KeyEqual, Alloc>> : std::conjunction<is_equality_comparable<Key>, is_equality_comparable<T>> {};
-        template <typename Key, typename T, typename Hash, typename KeyEqual, typename Alloc>
-        struct is_inequality_comparable<std::unordered_map<Key, T, Hash, KeyEqual, Alloc>> : std::conjunction<is_inequality_comparable<Key>, is_inequality_comparable<T>> {};
+		template <typename Key, typename T, typename Compare, typename Alloc>
+		struct is_equality_comparable<std::map<Key, T, Compare, Alloc>> : std::conjunction<is_equality_comparable<Key>, is_equality_comparable<T>> {};
+		template <typename Key, typename T, typename Compare, typename Alloc>
+		struct is_inequality_comparable<std::map<Key, T, Compare, Alloc>> : std::conjunction<is_inequality_comparable<Key>, is_inequality_comparable<T>> {};
+		template <typename Key, typename T, typename Hash, typename KeyEqual, typename Alloc>
+		struct is_equality_comparable<std::unordered_map<Key, T, Hash, KeyEqual, Alloc>> : std::conjunction<is_equality_comparable<Key>, is_equality_comparable<T>> {};
+		template <typename Key, typename T, typename Hash, typename KeyEqual, typename Alloc>
+		struct is_inequality_comparable<std::unordered_map<Key, T, Hash, KeyEqual, Alloc>> : std::conjunction<is_inequality_comparable<Key>, is_inequality_comparable<T>> {};
 
 		template <typename T>
 		constexpr bool is_equality_comparable_v = is_equality_comparable<T>::value;
@@ -233,7 +243,7 @@ namespace JsonReflect {
 							return; /* No change, skip */
 						}
 #else
-						static_assert(svh::always_false<Field_T>::value, "JsonSerializer Error: Type T is set to delta serialize but has no equality operator, inequality operator and macro JSON_REFLECT_ALLOW_JSON_COMPARE is disabled.");
+						static_assert(svh::always_false<Field_T>::value, "JsonReflect Error: Type T is set to delta serialize but has no equality operator, inequality operator and macro JSON_REFLECT_ALLOW_JSON_COMPARE is disabled.");
 #endif
 					}
 					});
@@ -259,8 +269,14 @@ namespace JsonReflect {
 
 	template<typename T, typename... Args>
 	static json to_json(const T& value, [[maybe_unused]] Args&&... args) {
+
+		/* 0) Pointer unwrapping */
+		if constexpr (std::is_pointer_v<T>) {
+			if (value == nullptr) return nullptr;
+			return to_json(*value, std::forward<Args>(args)...);
+		}
 		/* 1) Check for user defined serialize funciton */
-		if constexpr (svh::is_tag_invocable_v<serialize_t, const T&, Args...>) { /* WITH arguments */
+		else if constexpr (svh::is_tag_invocable_v<serialize_t, const T&, Args...>) { /* WITH arguments */
 			return tag_invoke(serialize, value, std::forward<Args>(args)...);
 		} else if constexpr (svh::is_tag_invocable_v<serialize_t, const T&>) { /* WITHOUT arguments */
 			return tag_invoke(serialize, value);
@@ -281,16 +297,29 @@ namespace JsonReflect {
 		}
 		/* 5) No suitable serialize implementation found, compile assert */
 		else {
-			static_assert(svh::always_false<T>::value, "JsonSerializer Error: No suitable serialize implementation found for type T");
+			static_assert(svh::always_false<T>::value, "JsonReflect Error: No suitable serialize implementation found for type T");
 			return {};
 		}
 	}
 
 	template<typename T, typename... Args>
 	static void from_json(const json& j, T& value, [[maybe_unused]] Args&&... args) {
-		static_assert(std::is_const_v<T> == false, "JsonSerializer Error: Cannot deserialize a const object of type T");
+		static_assert(std::is_const_v<T> == false, "JsonReflect Error: Cannot deserialize a const object of type T");
+		/* 0) Pointer unwrapping */
+		if constexpr (std::is_pointer_v<T>) {
+			static_assert(!std::is_const_v<std::remove_pointer_t<T>>, "JsonReflect Error: Cannot deserialize into a pointer-to-const");
+			//assert(value != nullptr && "JsonReflect Error: null pointer passed to from_json, allocate before deserializing");
+			if (value == nullptr) {
+#if JSON_REFLECT_ALLOW_THROW
+				throw std::runtime_error("JsonReflect Error: null pointer passed to from_json, allocate before deserializing.");
+#else
+				std::cerr << "JsonReflect Error: null pointer passed to from_json, allocate before deserializing. function will return without modifying the pointer." << std::endl;
+#endif
+			}
+			return from_json(j, *value, std::forward<Args>(args)...);
+		}
 		/* 1) Check for user defined deserialize funciton */
-		if constexpr (svh::is_tag_invocable_v<deserialize_t, const json&, T&, Args...>) { /* WITH arguments */
+		else if constexpr (svh::is_tag_invocable_v<deserialize_t, const json&, T&, Args...>) { /* WITH arguments */
 			return tag_invoke(deserialize, j, value, std::forward<Args>(args)...);
 		} else if constexpr (svh::is_tag_invocable_v<deserialize_t, const json&, T&>) { /* WITHOUT arguments */
 			return tag_invoke(deserialize, j, value);
@@ -311,7 +340,7 @@ namespace JsonReflect {
 		}
 		/* 5) No suitable deserialize implementation found, compile assert */
 		else {
-			static_assert(svh::always_false<T>::value, "JsonSerializer Error: No suitable deserialize implementation found for type T");
+			static_assert(svh::always_false<T>::value, "JsonReflect Error: No suitable deserialize implementation found for type T");
 			return;
 		}
 	}
@@ -320,8 +349,22 @@ namespace JsonReflect {
 	/* If right object has different values than left, those values are stored in the resulting json */
 	template<typename T, typename... Args>
 	static json get_changes(const T& lhs, const T& rhs, Args&&... args) {
+		/* 0) Pointer unwrapping */
+		if constexpr (std::is_pointer_v<T>) {
+			if (lhs == nullptr && rhs == nullptr) return {};
+			if (lhs == nullptr) return to_json(*rhs, std::forward<Args>(args)...);
+			if (rhs == nullptr) return {
+#if JSON_REFLECT_ALLOW_THROW
+				throw std::runtime_error("JsonReflect Error: provided right object is nullptr in JsonReflect::get_changes().");
+#else
+				std::cerr << "JsonReflect Error: provided right object is nullptr in JsonReflect::get_changes(). function will return empty json object.";
+#endif
+				return {};
+			}
+			return get_changes(*lhs, *rhs, std::forward<Args>(args)...);
+		}
 		/* 1) Check for user defined compare funciton */
-		if constexpr (svh::is_tag_invocable_v<compare_t, const T&, const T&, Args...>) {
+		else if constexpr (svh::is_tag_invocable_v<compare_t, const T&, const T&, Args...>) {
 			return tag_invoke(compare, lhs, rhs, std::forward<Args>(args)...);
 		}
 		/* 2) Check for library defined compare function */
@@ -349,7 +392,7 @@ namespace JsonReflect {
 		}
 		/* 6) No suitable compare implementation found, compile assert */
 		else {
-			static_assert(svh::always_false<T>::value, "JsonSerializer Error: No suitable serialize implementation found for type T");
+			static_assert(svh::always_false<T>::value, "JsonReflect Error: No suitable serialize implementation found for type T");
 			return {};
 		}
 	}

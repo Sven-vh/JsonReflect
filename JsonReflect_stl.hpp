@@ -152,71 +152,71 @@ namespace JsonReflect {
 		void
 		>
 		tag_invoke(deserialize_lib_t, const json& j, Container& container, Args&&... args) {
-        container.clear();
+		container.clear();
 
-        if constexpr (Detail::is_associative_container_v<Container>) {
-            // For maps: JSON is an object {"key": value}
-            for (const auto& [key_str, value_json] : j.items()) {
-                using key_type = typename Container::key_type;
-                using mapped_type = typename Container::mapped_type;
+		if constexpr (Detail::is_associative_container_v<Container>) {
+			// For maps: JSON is an object {"key": value}
+			for (const auto& [key_str, value_json] : j.items()) {
+				using key_type = typename Container::key_type;
+				using mapped_type = typename Container::mapped_type;
 
-                // Handle key conversion from JSON string
-                key_type key;
-                if constexpr (std::is_same_v<key_type, std::string>) {
-                    // String keys: use directly
-                    key = key_str;
-                } else if constexpr (std::is_arithmetic_v<key_type>) {
-                    // Numeric keys: parse from string
-                    if constexpr (std::is_integral_v<key_type>) {
-                        if constexpr (std::is_unsigned_v<key_type>) {
-                            key = static_cast<key_type>(std::stoull(key_str));
-                        } else {
-                            key = static_cast<key_type>(std::stoll(key_str));
-                        }
-                    } else {
-                        key = static_cast<key_type>(std::stod(key_str));
-                    }
-                } else {
-                    // Complex keys: deserialize from JSON string representation
-                    json key_json = json::parse(key_str);
-                    from_json(key_json, key, std::forward<Args>(args)...);
-                }
+				// Handle key conversion from JSON string
+				key_type key;
+				if constexpr (std::is_same_v<key_type, std::string>) {
+					// String keys: use directly
+					key = key_str;
+				} else if constexpr (std::is_arithmetic_v<key_type>) {
+					// Numeric keys: parse from string
+					if constexpr (std::is_integral_v<key_type>) {
+						if constexpr (std::is_unsigned_v<key_type>) {
+							key = static_cast<key_type>(std::stoull(key_str));
+						} else {
+							key = static_cast<key_type>(std::stoll(key_str));
+						}
+					} else {
+						key = static_cast<key_type>(std::stod(key_str));
+					}
+				} else {
+					// Complex keys: deserialize from JSON string representation
+					json key_json = json::parse(key_str);
+					from_json(key_json, key, std::forward<Args>(args)...);
+				}
 
-                // Deserialize the value
-                mapped_type value;
-                from_json(value_json, value, std::forward<Args>(args)...);
+				// Deserialize the value
+				mapped_type value;
+				from_json(value_json, value, std::forward<Args>(args)...);
 
-                container.emplace(std::move(key), std::move(value));
-            }
-        } else {
-            // For vectors/lists/etc: JSON is an array
-            for (const auto& element_json : j) {
-                typename Container::value_type element;
-                from_json(element_json, element, std::forward<Args>(args)...);
-                container.insert(container.end(), std::move(element));
-            }
-        }
+				container.emplace(std::move(key), std::move(value));
+			}
+		} else {
+			// For vectors/lists/etc: JSON is an array
+			for (const auto& element_json : j) {
+				typename Container::value_type element;
+				from_json(element_json, element, std::forward<Args>(args)...);
+				container.insert(container.end(), std::move(element));
+			}
+		}
 	}
 
 	/* [ Deserialize ] std::array - fixed size, no clear/insert */
-    template <typename T, std::size_t N, typename... Args>
-    std::enable_if_t<(sizeof...(Args) > 0), void> 
+	template <typename T, std::size_t N, typename... Args>
+	std::enable_if_t<(sizeof...(Args) > 0), void>
 		tag_invoke(deserialize_lib_t, const json& j, std::array<T, N>& container, Args&&... args) {
-        for (std::size_t i = 0; i < N && i < j.size(); ++i) {
-            from_json(j[i], container[i], std::forward<Args>(args)...);
-        }
-    }
+		for (std::size_t i = 0; i < N && i < j.size(); ++i) {
+			from_json(j[i], container[i], std::forward<Args>(args)...);
+		}
+	}
 
-    /* [ Serialize ] std::array - same as container but explicit */
-    template <typename T, std::size_t N, typename... Args>
-    std::enable_if_t<(sizeof...(Args) > 0), json> 
+	/* [ Serialize ] std::array - same as container but explicit */
+	template <typename T, std::size_t N, typename... Args>
+	std::enable_if_t<(sizeof...(Args) > 0), json>
 		tag_invoke(serialize_lib_t, const std::array<T, N>& container, Args&&... args) {
-        json j = json::array();
-        for (const auto& element : container) {
-            j.push_back(to_json(element, std::forward<Args>(args)...));
-        }
-        return j;
-    }
+		json j = json::array();
+		for (const auto& element : container) {
+			j.push_back(to_json(element, std::forward<Args>(args)...));
+		}
+		return j;
+	}
 
 	/* [ Serialize ] Smart Pointers, shared & unique */
 	template<typename T>
@@ -237,7 +237,7 @@ namespace JsonReflect {
 			return;
 		}
 
-#ifdef JSON_REFLECT_INITIALIZE_SMART_POINTERS
+#if JSON_REFLECT_INITIALIZE_SMART_POINTERS
 		if (!value) {
 			Detail::initialize_smart_pointer(value);
 		}
@@ -247,7 +247,7 @@ namespace JsonReflect {
 			throw std::runtime_error(
 				std::string("JsonReflect Error: Cannot deserialize to null smart pointer for type '") +
 				typeid(element_type).name() +
-				"' (enable JSON_REFLECT_INITIALIZE_SMART_POINTERS to auto-initialize)"
+				"' (define JSON_REFLECT_INITIALIZE_SMART_POINTERS with 1 to auto-initialize)"
 			);
 		}
 #endif
@@ -269,13 +269,12 @@ namespace JsonReflect {
 	template<typename T>
 	std::enable_if_t<Detail::is_weak_pointer_v<T>, void>
 		tag_invoke(deserialize_lib_t, const json& j, T& value) {
-		//static_assert(std::false_type::value, "JsonReflect Error: Deserialization of weak_ptr is not supported.");
-		throw std::runtime_error("JsonReflect Error: Deserialization of weak_ptr is not supported.");
+		static_assert(svh::always_false<T>::value, "JsonReflect Error: Deserialization of weak_ptr is not supported.");
 	}
 
 	/* [ Serialize ] std::variant */
 	template <typename... Types, typename... Args>
-    json tag_invoke(serialize_lib_t, const std::variant<Types...>& value, Args... args) {
+	json tag_invoke(serialize_lib_t, const std::variant<Types...>& value, Args... args) {
 		json result;
 		result["index"] = value.index();
 		std::visit([&result, &args...](const auto& v) {
@@ -286,7 +285,7 @@ namespace JsonReflect {
 
 	/* [ Deserialize ] std::variant */
 	template <typename... Types, typename... Args>
-    void tag_invoke(deserialize_lib_t, const json& j, std::variant<Types...>& value, Args... args) {
+	void tag_invoke(deserialize_lib_t, const json& j, std::variant<Types...>& value, Args... args) {
 		if (!j.is_object()) {
 			throw std::runtime_error("JsonReflect Error: Expected JSON object for std::variant deserialization");
 		}
