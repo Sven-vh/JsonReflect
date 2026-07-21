@@ -5,7 +5,7 @@
 // Made as self-study project at Breda University of Applied Sciences
 // https://github.com/Sven-vh/JsonReflect
 //
-// Generated: 2026-07-21 17:23:30
+// Generated: 2026-07-21 17:39:28
 // ============================================================================
 //
 // MIT License
@@ -28320,7 +28320,7 @@ namespace JsonReflect {
 		if constexpr (std::is_pointer_v<T>) {
 			if (lhs == nullptr && rhs == nullptr) return {};
 			if (lhs == nullptr) return to_json(*rhs, std::forward<Args>(args)...);
-			if (rhs == nullptr) return {
+			if (rhs == nullptr) {
 #if JSON_REFLECT_ALLOW_THROW
 				throw std::runtime_error("JsonReflect Error: provided right object is nullptr in JsonReflect::get_changes().");
 #else
