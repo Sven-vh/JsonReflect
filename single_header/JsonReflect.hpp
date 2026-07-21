@@ -5,7 +5,7 @@
 // Made as self-study project at Breda University of Applied Sciences
 // https://github.com/Sven-vh/JsonReflect
 //
-// Generated: 2026-05-26 21:49:30
+// Generated: 2026-07-21 14:01:08
 // ============================================================================
 //
 // MIT License
@@ -27927,15 +27927,35 @@ namespace JsonReflect::Detail {
 #endif
 #include <variant>
 
-#define JSON_REFLECT(T, ...) \
-VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::serialize_lib_t, T, __VA_ARGS__);\
-VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::deserialize_lib_t, T, __VA_ARGS__);\
+#define JSON_REFLECT_SERIALIZE(T, ...) \
+VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::serialize_lib_t, T, __VA_ARGS__)
+
+#define JSON_REFLECT_DESERIALIZE(T, ...) \
+VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::deserialize_lib_t, T, __VA_ARGS__)
+
+#define JSON_REFLECT_COMPARE(T, ...) \
 VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::compare_lib_t, T, __VA_ARGS__)
 
+#define JSON_REFLECT_EXPAND(x) x
+
+#define JSON_REFLECT(T, ...) \
+JSON_REFLECT_EXPAND(JSON_REFLECT_SERIALIZE(T, __VA_ARGS__)); \
+JSON_REFLECT_EXPAND(JSON_REFLECT_DESERIALIZE(T, __VA_ARGS__)); \
+JSON_REFLECT_EXPAND(JSON_REFLECT_COMPARE(T, __VA_ARGS__))
+
+#define JSON_REFLECT_SERIALIZE_TEMPLATE(TPARAMS, T, TARGS, ...) \
+VISITABLE_TEMPLATE_STRUCT_IN_CONTEXT(JsonReflect::serialize_lib_t, TPARAMS, T, TARGS, __VA_ARGS__)
+
+#define JSON_REFLECT_DESERIALIZE_TEMPLATE(TPARAMS, T, TARGS, ...) \
+VISITABLE_TEMPLATE_STRUCT_IN_CONTEXT(JsonReflect::deserialize_lib_t, TPARAMS, T, TARGS, __VA_ARGS__)
+
+#define JSON_REFLECT_COMPARE_TEMPLATE(TPARAMS, T, TARGS, ...) \
+VISITABLE_TEMPLATE_STRUCT_IN_CONTEXT(JsonReflect::compare_lib_t, TPARAMS, T, TARGS, __VA_ARGS__)
+
 #define JSON_REFLECT_TEMPLATE(TPARAMS, T, TARGS, ...) \
-VISITABLE_TEMPLATE_STRUCT_IN_CONTEXT(JsonReflect::serialize_lib_t, TPARAMS, T, TARGS, __VA_ARGS__);\
-VISITABLE_TEMPLATE_STRUCT_IN_CONTEXT(JsonReflect::deserialize_lib_t, TPARAMS, T, TARGS, __VA_ARGS__);\
-VISITABLE_TEMPLATE_STRUCT_IN_CONTEXT(JsonReflect::compare_lib_t, TPARAMS, T, TARGS, __VA_ARGS__);
+JSON_REFLECT_EXPAND(JSON_REFLECT_SERIALIZE_TEMPLATE(TPARAMS, T, TARGS, __VA_ARGS__)) \
+JSON_REFLECT_EXPAND(JSON_REFLECT_DESERIALIZE_TEMPLATE(TPARAMS, T, TARGS, __VA_ARGS__)) \
+JSON_REFLECT_EXPAND(JSON_REFLECT_COMPARE_TEMPLATE(TPARAMS, T, TARGS, __VA_ARGS__));
 
 /* Needs to be defined outside of any namespaces */
 struct json_reflect_global_tag {};
