@@ -55,6 +55,19 @@ TEST(JsonReflect, raw_pointer) {
 	delete output;
 }
 
+/* Pointer reference */
+TEST(JsonReflect, pointer_reference) {
+	int value = 42;
+	int* ptr = &value;
+	auto result = JsonReflect::to_json(ptr);
+	const std::string json_str = result.dump(2);
+	int* output = new int;
+	JsonReflect::from_json(result, output);
+	auto ohmannn_diff = nlohmann::json::diff(result, JsonReflect::to_json(output));
+	EXPECT_TRUE(ohmannn_diff.empty());
+	delete output;
+}
+
 /* STL Containers */
 TEST(JsonReflect, vector) {
 	serialize_test<std::vector<int>>({ 1, 2, 3, 4, 5 });
