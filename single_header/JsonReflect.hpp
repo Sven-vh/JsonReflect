@@ -5,7 +5,7 @@
 // Made as self-study project at Breda University of Applied Sciences
 // https://github.com/Sven-vh/JsonReflect
 //
-// Generated: 2026-07-21 17:21:09
+// Generated: 2026-07-21 17:23:30
 // ============================================================================
 //
 // MIT License
@@ -28012,8 +28012,8 @@ VISITABLE_TEMPLATE_STRUCT_IN_CONTEXT(JsonReflect::compare_lib_t, TPARAMS, T, TAR
 	JSON_REFLECT_TEMPLATE((typename T), MyTemplateStruct, (T), field1, field2, field3);
 */
 #define JSON_REFLECT_TEMPLATE(TPARAMS, T, TARGS, ...) \
-JSON_REFLECT_EXPAND(JSON_REFLECT_SERIALIZE_TEMPLATE(TPARAMS, T, TARGS, __VA_ARGS__)) \
-JSON_REFLECT_EXPAND(JSON_REFLECT_DESERIALIZE_TEMPLATE(TPARAMS, T, TARGS, __VA_ARGS__)) \
+JSON_REFLECT_EXPAND(JSON_REFLECT_SERIALIZE_TEMPLATE(TPARAMS, T, TARGS, __VA_ARGS__)); \
+JSON_REFLECT_EXPAND(JSON_REFLECT_DESERIALIZE_TEMPLATE(TPARAMS, T, TARGS, __VA_ARGS__)); \
 JSON_REFLECT_EXPAND(JSON_REFLECT_COMPARE_TEMPLATE(TPARAMS, T, TARGS, __VA_ARGS__));
 
 
