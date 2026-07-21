@@ -284,7 +284,7 @@ namespace JsonReflect {
 		if constexpr (std::is_pointer_v<T>) {
 			if (lhs == nullptr && rhs == nullptr) return {};
 			if (lhs == nullptr) return to_json(*rhs, std::forward<Args>(args)...);
-			if (rhs == nullptr) return {
+			if (rhs == nullptr) {
 #if JSON_REFLECT_ALLOW_THROW
 				throw std::runtime_error("JsonReflect Error: provided right object is nullptr in JsonReflect::get_changes().");
 #else
