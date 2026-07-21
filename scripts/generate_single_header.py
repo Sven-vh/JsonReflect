@@ -31,6 +31,8 @@ EXTERN_FILES = [
 ]
 
 PROJECT_FILES = [
+    "JsonReflect_defines.hpp",
+    "JsonReflect_macro.hpp",
     "JsonReflect_helpers.hpp",
     "JsonReflect_entry.hpp",
     "JsonReflect_primitives.hpp",
@@ -39,10 +41,18 @@ PROJECT_FILES = [
 
 # Include patterns to remove (these will be stripped from the merged file)
 INTERNAL_INCLUDE_PATTERNS = [
+    # Macro-form dependency includes (from JsonReflect_defines.hpp)
+    r'#include\s+JSON_REFLECT_NLOHMANN_JSON_HPP',
+    r'#include\s+JSON_REFLECT_SVH_TAG_INVOKE_HPP',
+    r'#include\s+JSON_REFLECT_VISIT_STRUCT_HPP',
+    r'#include\s+JSON_REFLECT_MAGIC_ENUM_HPP',
+    # Literal-form dependency includes
     r'#include\s*[<"]nlohmann/json\.hpp[>"]',
     r'#include\s*[<"]svh/tag_invoke\.hpp[>"]',
     r'#include\s*[<"]visit_struct/visit_struct\.hpp[>"]',
     r'#include\s*[<"]magic_enum/magic_enum\.hpp[>"]',
+    r'#include\s*"JsonReflect_defines\.hpp"',
+    r'#include\s*"JsonReflect_macro\.hpp"',
     r'#include\s*"JsonReflect_helpers\.hpp"',
     r'#include\s*"JsonReflect_entry\.hpp"',
     r'#include\s*"JsonReflect_primitives\.hpp"',

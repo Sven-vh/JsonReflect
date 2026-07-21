@@ -39,7 +39,7 @@
 /* Includes */
 /* feel free to define your own include paths */
 /* nlohmann json */
-#ifndef JSON_REFLECT_INCLUDE_NLOHMANN_JSON_HPP
+#ifndef JSON_REFLECT_NLOHMANN_JSON_HPP
 #define JSON_REFLECT_NLOHMANN_JSON_HPP <nlohmann/json.hpp>
 #endif
 
