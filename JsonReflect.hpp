@@ -5,18 +5,62 @@
 // Licensed under the MIT License
 // https://github.com/Sven-vh/JsonReflect
 // ============================================================================
+// DEFAULT EXAMPLE USAGE:
+// 
+// Mark your struct visitable:
+// ```
+// #include "JsonReflect_macro.hpp"
+// 
+// namespace MyProject {
+// 	 struct MyStruct {
+// 	   int a = 0;
+// 	   float b = 0.0f;
+// 	   double c = 0.0;
+// 	 };
+// }
+// JSON_REFLECT(MyProject::MyStruct, a, b, c);
+// ```
+// 
+// Serialize and deserialize:
+// ```
+// #include "JsonReflect.hpp"
+// 
+// MyProject::MyStruct my_struct;
+// // Serialize to json
+// nlohmann::json j = JsonReflect::to_json(my_struct);
+// // Deserialize from json
+// JsonReflect::from_json(j, my_struct);
+// ```
+// 
+// Add the macro `BEFRIEND_JSON_REFLECT()` to your struct/class to allow private members to be serialized/deserialized:
+// 
+// ```
+// #include "JsonReflect_macro.hpp"
+// 
+// namespace MyProject {
+// 	 struct MyStruct {
+//    private:
+// 	   int a = 0;
+// 	   float b = 0.0f;
+// 	   double c = 0.0;
+// 
+// 	   BEFRIEND_JSON_REFLECT();
+//   };
+// }
+// ```
+// ============================================================================
 #pragma once
 
-/* Disable implicit nlohmann conversion */
-/* this is to avoid confusion with templates that are exidently converted to json objects */
-#ifndef JSON_USE_IMPLICIT_CONVERSIONS
-#define JSON_USE_IMPLICIT_CONVERSIONS 0
-#endif
-#include <nlohmann/json.hpp>
+#include "JsonReflect_defines.hpp"
 
-#include <svh/tag_invoke.hpp>
-#include <visit_struct/visit_struct.hpp>
+/* Include nlohmann json */
+#include JSON_REFLECT_NLOHMANN_JSON_HPP
+/* svh tag_invoke */
+#include JSON_REFLECT_SVH_TAG_INVOKE_HPP
+/* visit_struct */
+#include JSON_REFLECT_VISIT_STRUCT_HPP
 
+#include "JsonReflect_macro.hpp"
 #include "JsonReflect_helpers.hpp"
 #include "JsonReflect_entry.hpp"
 #include "JsonReflect_primitives.hpp"

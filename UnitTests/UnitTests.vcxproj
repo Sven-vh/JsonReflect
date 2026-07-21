@@ -66,10 +66,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\JsonReflect.hpp" />
+    <ClInclude Include="..\JsonReflect_defines.hpp" />
     <ClInclude Include="..\JsonReflect_entry.hpp" />
+    <ClInclude Include="..\JsonReflect_macro.hpp" />
     <ClInclude Include="..\JsonReflect_primitives.hpp" />
     <ClInclude Include="..\JsonReflect_helpers.hpp" />
     <ClInclude Include="..\JsonReflect_stl.hpp" />
+    <ClInclude Include="MyStruct.hpp" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>

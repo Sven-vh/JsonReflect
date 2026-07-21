@@ -7,9 +7,13 @@
 // ============================================================================
 #pragma once
 #include <type_traits>
+#include "JsonReflect_defines.hpp"
 #include "JsonReflect_entry.hpp"
 #include "JsonReflect_helpers.hpp"
-#include <magic_enum/magic_enum.hpp>
+
+/* Include magic_enum */
+#include JSON_REFLECT_MAGIC_ENUM_HPP
+
 #include <utility>
 #include <iostream>
 
