@@ -5,7 +5,7 @@
 // Made as self-study project at Breda University of Applied Sciences
 // https://github.com/Sven-vh/JsonReflect
 //
-// Generated: 2026-07-21 14:01:08
+// Generated: 2026-07-21 17:21:09
 // ============================================================================
 //
 // MIT License
@@ -41,6 +41,8 @@
  *   - extern/magic_enum/magic_enum.hpp
  *
  * JsonReflect Library:
+ *   - JsonReflect_defines.hpp
+ *   - JsonReflect_macro.hpp
  *   - JsonReflect_helpers.hpp
  *   - JsonReflect_entry.hpp
  *   - JsonReflect_primitives.hpp
@@ -27862,42 +27864,10 @@ constexpr E& operator^=(E& lhs, E rhs) noexcept {
 
 
 // ----------------------------------------------------------------------------
-// Begin: JsonReflect_helpers.hpp
-// ----------------------------------------------------------------------------
-
-#include <type_traits>
-#define BEFRIEND_JSON_REFLECT()      \
-    template <typename, typename> \
-    friend struct ::visit_struct::traits::visitable;
-
-/* Helpers */
-namespace JsonReflect::Detail {
-
-	// Remove const/volatile and reference from type
-	template<typename T>
-	using uncvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
-
-	// Check if type is json-compatible (using internal trait)
-	//!nlohmann::detail::is_basic_json<uncvref_t<T>>::value&&
-
-	// Check if type T has equality operator defined
-	template<typename T, typename = void>
-	struct has_equality_operator : std::false_type {};
-
-	template<typename T>
-	struct has_equality_operator<T, std::void_t<decltype(std::declval<T>() == std::declval<T>())>> : std::true_type {};
-
-	template<typename T>
-	inline constexpr bool has_equality_operator_v = has_equality_operator<T>::value;
-}
-
-
-// ----------------------------------------------------------------------------
-// Begin: JsonReflect_entry.hpp
+// Begin: JsonReflect_defines.hpp
 // ----------------------------------------------------------------------------
 
 /* Configuration */
-
 /* Whether to use a static instance when comparing for delta (using static causes less allocations) */
 /* See Detail::to_json_visitable for usage */
 #ifndef JSON_REFLECT_STATIC_FOR_DELTA
@@ -27925,44 +27895,39 @@ namespace JsonReflect::Detail {
 #ifndef JSON_USE_IMPLICIT_CONVERSIONS
 #define JSON_USE_IMPLICIT_CONVERSIONS 0
 #endif
-#include <variant>
 
-#define JSON_REFLECT_SERIALIZE(T, ...) \
-VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::serialize_lib_t, T, __VA_ARGS__)
+/* Includes */
+/* feel free to define your own include paths */
+/* nlohmann json */
+#ifndef JSON_REFLECT_NLOHMANN_JSON_HPP
+#define JSON_REFLECT_NLOHMANN_JSON_HPP <nlohmann/json.hpp>
+#endif
 
-#define JSON_REFLECT_DESERIALIZE(T, ...) \
-VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::deserialize_lib_t, T, __VA_ARGS__)
+/* visit_struct */
+#ifndef JSON_REFLECT_VISIT_STRUCT_HPP
+#define JSON_REFLECT_VISIT_STRUCT_HPP <visit_struct/visit_struct.hpp>
+#endif
 
-#define JSON_REFLECT_COMPARE(T, ...) \
-VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::compare_lib_t, T, __VA_ARGS__)
+/* svh tag_invoke */
+#ifndef JSON_REFLECT_SVH_TAG_INVOKE_HPP
+#define JSON_REFLECT_SVH_TAG_INVOKE_HPP <svh/tag_invoke.hpp>
+#endif
 
-#define JSON_REFLECT_EXPAND(x) x
+/* magic_enum */
+#ifndef JSON_REFLECT_MAGIC_ENUM_HPP
+#define JSON_REFLECT_MAGIC_ENUM_HPP <magic_enum/magic_enum.hpp>
+#endif
 
-#define JSON_REFLECT(T, ...) \
-JSON_REFLECT_EXPAND(JSON_REFLECT_SERIALIZE(T, __VA_ARGS__)); \
-JSON_REFLECT_EXPAND(JSON_REFLECT_DESERIALIZE(T, __VA_ARGS__)); \
-JSON_REFLECT_EXPAND(JSON_REFLECT_COMPARE(T, __VA_ARGS__))
 
-#define JSON_REFLECT_SERIALIZE_TEMPLATE(TPARAMS, T, TARGS, ...) \
-VISITABLE_TEMPLATE_STRUCT_IN_CONTEXT(JsonReflect::serialize_lib_t, TPARAMS, T, TARGS, __VA_ARGS__)
+// ----------------------------------------------------------------------------
+// Begin: JsonReflect_macro.hpp
+// ----------------------------------------------------------------------------
 
-#define JSON_REFLECT_DESERIALIZE_TEMPLATE(TPARAMS, T, TARGS, ...) \
-VISITABLE_TEMPLATE_STRUCT_IN_CONTEXT(JsonReflect::deserialize_lib_t, TPARAMS, T, TARGS, __VA_ARGS__)
-
-#define JSON_REFLECT_COMPARE_TEMPLATE(TPARAMS, T, TARGS, ...) \
-VISITABLE_TEMPLATE_STRUCT_IN_CONTEXT(JsonReflect::compare_lib_t, TPARAMS, T, TARGS, __VA_ARGS__)
-
-#define JSON_REFLECT_TEMPLATE(TPARAMS, T, TARGS, ...) \
-JSON_REFLECT_EXPAND(JSON_REFLECT_SERIALIZE_TEMPLATE(TPARAMS, T, TARGS, __VA_ARGS__)) \
-JSON_REFLECT_EXPAND(JSON_REFLECT_DESERIALIZE_TEMPLATE(TPARAMS, T, TARGS, __VA_ARGS__)) \
-JSON_REFLECT_EXPAND(JSON_REFLECT_COMPARE_TEMPLATE(TPARAMS, T, TARGS, __VA_ARGS__));
-
+/* Include visit struct */
 /* Needs to be defined outside of any namespaces */
 struct json_reflect_global_tag {};
 
 namespace JsonReflect {
-	using json = nlohmann::ordered_json;
-
 	/* Tags */
 	struct serialize_t : json_reflect_global_tag { /* Public Tag */ };
 	inline constexpr serialize_t serialize{};
@@ -27983,17 +27948,7 @@ namespace JsonReflect {
 	struct compare_lib_t : json_reflect_global_tag { /* Library only */ };
 	inline constexpr compare_lib_t compare_lib{};
 
-	/* Forward declare */
-	template <typename T, typename... Args>
-	static json to_json(const T& value, Args&&... args);
-
-	template <typename T, typename... Args>
-	static void from_json(const json& j, T& value, Args&&... args);
-
 	namespace Detail {
-		template<typename T, typename CONTEXT> /* Has a visitable struct implementation */
-		constexpr bool is_visitable_v = visit_struct::traits::is_visitable<T, CONTEXT>::value;
-
 		/* Whether or not a type should only serialize it's changes */
 		template<typename T>
 		struct delta_serialize : std::false_type {};
@@ -28006,6 +27961,113 @@ namespace JsonReflect {
 				return T{};
 			}
 		};
+	}
+}
+
+/* allow JsonReflect access to private members to be serialized/deserialized */
+#define BEFRIEND_JSON_REFLECT()      \
+    template <typename, typename> \
+    friend struct ::visit_struct::traits::visitable;
+
+/* [Advanced Usage] Only use if you want different serialization behavior */
+#define JSON_REFLECT_SERIALIZE(T, ...) \
+VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::serialize_lib_t, T, __VA_ARGS__)
+
+/* [Advanced Usage] Only use if you want different deserialization behavior */
+#define JSON_REFLECT_DESERIALIZE(T, ...) \
+VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::deserialize_lib_t, T, __VA_ARGS__)
+
+/* [Advanced Usage] Only use if you want different compare behavior */
+#define JSON_REFLECT_COMPARE(T, ...) \
+VISITABLE_STRUCT_IN_CONTEXT(JsonReflect::compare_lib_t, T, __VA_ARGS__)
+
+#define JSON_REFLECT_EXPAND(x) x
+
+// MAIN MACRO:
+/*
+	[Recommended Usage] Use this macro to reflect your struct/class
+	Example usage:
+	JSON_REFLECT(MyStruct, field1, field2, field3);
+*/
+#define JSON_REFLECT(T, ...) \
+JSON_REFLECT_EXPAND(JSON_REFLECT_SERIALIZE(T, __VA_ARGS__)); \
+JSON_REFLECT_EXPAND(JSON_REFLECT_DESERIALIZE(T, __VA_ARGS__)); \
+JSON_REFLECT_EXPAND(JSON_REFLECT_COMPARE(T, __VA_ARGS__))
+
+/* [Advanced Usage] Use this macro to reflect your templated struct/class */
+#define JSON_REFLECT_SERIALIZE_TEMPLATE(TPARAMS, T, TARGS, ...) \
+VISITABLE_TEMPLATE_STRUCT_IN_CONTEXT(JsonReflect::serialize_lib_t, TPARAMS, T, TARGS, __VA_ARGS__)
+
+/* [Advanced Usage] Use this macro to reflect your templated struct/class */
+#define JSON_REFLECT_DESERIALIZE_TEMPLATE(TPARAMS, T, TARGS, ...) \
+VISITABLE_TEMPLATE_STRUCT_IN_CONTEXT(JsonReflect::deserialize_lib_t, TPARAMS, T, TARGS, __VA_ARGS__)
+
+/* [Advanced Usage] Use this macro to reflect your templated struct/class */
+#define JSON_REFLECT_COMPARE_TEMPLATE(TPARAMS, T, TARGS, ...) \
+VISITABLE_TEMPLATE_STRUCT_IN_CONTEXT(JsonReflect::compare_lib_t, TPARAMS, T, TARGS, __VA_ARGS__)
+
+/*
+	[Advanced Usage] Use this macro to reflect your templated struct/class
+	Example usage:
+	JSON_REFLECT_TEMPLATE((typename T), MyTemplateStruct, (T), field1, field2, field3);
+*/
+#define JSON_REFLECT_TEMPLATE(TPARAMS, T, TARGS, ...) \
+JSON_REFLECT_EXPAND(JSON_REFLECT_SERIALIZE_TEMPLATE(TPARAMS, T, TARGS, __VA_ARGS__)) \
+JSON_REFLECT_EXPAND(JSON_REFLECT_DESERIALIZE_TEMPLATE(TPARAMS, T, TARGS, __VA_ARGS__)) \
+JSON_REFLECT_EXPAND(JSON_REFLECT_COMPARE_TEMPLATE(TPARAMS, T, TARGS, __VA_ARGS__));
+
+
+// ----------------------------------------------------------------------------
+// Begin: JsonReflect_helpers.hpp
+// ----------------------------------------------------------------------------
+
+#include <type_traits>
+
+/* Helpers */
+namespace JsonReflect::Detail {
+
+	// Remove const/volatile and reference from type
+	template<typename T>
+	using uncvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
+
+	// Check if type is json-compatible (using internal trait)
+	//!nlohmann::detail::is_basic_json<uncvref_t<T>>::value&&
+
+	// Check if type T has equality operator defined
+	template<typename T, typename = void>
+	struct has_equality_operator : std::false_type {};
+
+	template<typename T>
+	struct has_equality_operator<T, std::void_t<decltype(std::declval<T>() == std::declval<T>())>> : std::true_type {};
+
+	template<typename T>
+	inline constexpr bool has_equality_operator_v = has_equality_operator<T>::value;
+}
+
+
+// ----------------------------------------------------------------------------
+// Begin: JsonReflect_entry.hpp
+// ----------------------------------------------------------------------------
+
+/* Defines / Settings */
+/* Include nlohmann json */
+/* Include visit_struct */
+/* Include svh tag_invoke */
+#include <variant>
+
+namespace JsonReflect {
+	using json = nlohmann::ordered_json;
+
+	/* Forward declare */
+	template <typename T, typename... Args>
+	static json to_json(const T& value, Args&&... args);
+
+	template <typename T, typename... Args>
+	static void from_json(const json& j, T& value, Args&&... args);
+
+	namespace Detail {
+		template<typename T, typename CONTEXT> /* Has a visitable struct implementation */
+		constexpr bool is_visitable_v = visit_struct::traits::is_visitable<T, CONTEXT>::value;
 
 		/* Check if type can be serialized */
 		template <typename T, typename... Args>
@@ -28309,6 +28371,7 @@ namespace JsonReflect {
 // ----------------------------------------------------------------------------
 
 #include <type_traits>
+/* Include magic_enum */
 #include <utility>
 #include <iostream>
 
