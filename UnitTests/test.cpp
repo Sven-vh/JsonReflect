@@ -238,6 +238,39 @@ TEST(JsonReflect, nested_struct) {
 	serialize_test(settings);
 }
 
+namespace ns {
+	struct Foo {
+		int			a = 50;
+		float		b = 1.0f;
+		bool		c = true;
+		Difficulty	d = Difficulty::Medium;
+	};
+}
+JSON_REFLECT_SERIALIZE(ns::Foo, a, b, c); /* only serialize a, b, and c */
+JSON_REFLECT_DESERIALIZE(ns::Foo, a, b); /* only deserialize a and b */
+JSON_REFLECT_COMPARE(ns::Foo, a); /* only compare a */
+
+TEST(JsonReflect, custom_struct_partial) {
+	ns::Foo foo;
+	foo.a = 100;
+	foo.b = 2.0f;
+	foo.c = false;
+	foo.d = Difficulty::Hard;
+
+	//serialize_test(foo);
+	/* custom test */
+	{
+		auto json = JsonReflect::to_json(foo);
+		ns::Foo foo2{};
+		JsonReflect::from_json(json, foo2);
+
+		EXPECT_EQ(foo.a, foo2.a);
+		EXPECT_EQ(foo.b, foo2.b);
+		EXPECT_EQ(foo2.c, true); /* c should be default value */
+		EXPECT_EQ(foo2.d, Difficulty::Medium); /* d should be default value */
+	}
+}
+
 TEST(JsonReflect, custom_struct_vector) {
 	std::vector<ns::GameSettings> settings_vec = {
 		{50, 1.0f, true, Difficulty::Medium},
