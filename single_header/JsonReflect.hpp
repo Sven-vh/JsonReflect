@@ -5,7 +5,7 @@
 // Made as self-study project at Breda University of Applied Sciences
 // https://github.com/Sven-vh/JsonReflect
 //
-// Generated: 2026-07-23 12:30:20
+// Generated: 2026-07-23 12:36:25
 // ============================================================================
 //
 // MIT License
@@ -28223,7 +28223,7 @@ namespace JsonReflect {
 			return j;
 		}
 
-		template <typename Tag = typename deserialize_lib_t, typename T, typename... Args>
+		template <typename Tag = deserialize_lib_t, typename T, typename... Args>
 		static void from_json_visitable(const json& j, T& value, Args&&... args) {
 			visit_struct::context<Tag>::for_each(value, [&](const char* name, auto& field) {
 				auto it = j.find(name);
