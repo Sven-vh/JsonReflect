@@ -187,7 +187,7 @@ namespace JsonReflect {
 			return j;
 		}
 
-		template <typename Tag = typename deserialize_lib_t, typename T, typename... Args>
+		template <typename Tag = deserialize_lib_t, typename T, typename... Args>
 		static void from_json_visitable(const json& j, T& value, Args&&... args) {
 			visit_struct::context<Tag>::for_each(value, [&](const char* name, auto& field) {
 				auto it = j.find(name);
